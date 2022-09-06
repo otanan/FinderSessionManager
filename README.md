@@ -6,7 +6,7 @@
 <h2 align="center">FinderSessionManager</h2>
 <br />
   <p align="center">
-    Session/tab manager for MacOS Finder built on [Hammerspoon](https://www.hammerspoon.org/).
+    Session/tab manager for MacOS Finder built on <a href="https://www.hammerspoon.org/">Hammerspoon</a>.
     <br />
     <br />
     Status: <em>in progress</em>
