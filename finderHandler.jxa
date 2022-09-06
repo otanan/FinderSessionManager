@@ -1,0 +1,111 @@
+var finder = Application('Finder');
+finder.includeStandardAdditions = true;
+
+// paths = ['/Users/otanan/Desktop', '/Users/otanan/Downloads', '/Users/otanan/Documents', ]
+
+
+// // Close all tabs first
+// function closeTabs() {
+//     var windows = finder.finderWindows();
+//     for (var i in windows)
+//         windows[i].close();
+// }
+
+// // Open tab and get focus
+// function openPathInTab(path) {
+//     finder.openLocation('file://' + path);
+//     finder.activate();
+// }
+
+// closeTabs();
+// for (var path of pinnedPaths) openPathInTab(path);
+// for (var path of paths) openPathInTab(path);
+
+
+    // // Get current finder path in given window
+    // function pathFromWindow(window) {
+    //     // Gives file://...
+    //     return fileURLString = window.target().url();
+    //     // Convert to standard path
+    //     return $.NSURL.alloc.initWithString(fileURLString).fileSystemRepresentation
+    // }
+
+    // // Get all finder paths through all windows
+    // function getPaths() {
+    //     var paths = [];
+    //     var windows = finder.finderWindows();
+    //     for (var i in windows)
+    //         paths.push(pathFromWindow(windows[i]))
+        
+    //     console.log(paths)
+    // }
+
+    // // Run the script
+    // // getPaths();
+
+
+
+// openPathInTab('/Users/otanan/Desktop');
+// openPathInTab('/Users/otanan/Downloads');
+// openPathInTab('/Users/otanan/Documents')
+
+
+
+var finder = Application('Finder');
+finder.includeStandardAdditions = true;
+
+var pinnedPaths = ["/Users/otanan/", "/Users/otanan/Google Drive/Programming/", ];
+var paths = ["/Users/otanan/Documents/Zoom", ];
+
+
+
+function pathFromWindow(window) {
+    // Gives file://...
+    var fileURLString = window.target().url();
+    // Convert to standard path
+    return $.NSURL.alloc.initWithString(fileURLString).fileSystemRepresentation
+}
+
+
+// Close all tabs first
+function closeTabsButOne() {
+    var windows = finder.finderWindows();
+    for (var i in windows) {
+        // Close all but one, prevents need for resizing
+        if (i == windows.length - 1) break;
+
+        windows[i].close();
+    }
+    return windows[i];
+}
+
+
+function openPathInTab(path) {
+    path = path.replace(' ', '\%20'); // fix spaces
+    console.log(path)
+    finder.openLocation('file://' + path);
+}
+
+// Sets the paths while preserving the current open window
+function setTabs(paths) {
+    finder.activate(); // get focus
+    var lastTab = closeTabsButOne();
+    var lastPath = pathFromWindow(lastTab);
+
+    // Remove trailing '/' since lastPath will not have it, for comparison
+    compPath = paths[0]
+    if (compPath.slice(-1) == '/') compPath = compPath.slice(0, -1);
+
+    // Check to see if remaining tab is the path we want already
+        // if so, continue
+    if (compPath !== lastPath) {
+        // Make a new tab but remember to close this window
+        openPathInTab(compPath);
+        paths.shift();
+        lastTab.close();
+    }
+
+    for (path of paths) openPathInTab(path);
+}
+
+setTabs(pinnedPaths.concat(paths));

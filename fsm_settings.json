@@ -1,0 +1,26 @@
+{
+    "Downloads": {
+        "description": "Downloads folder and miscellaneous file interaction.",
+        "pinned": [
+            "/Users/otanan/Downloads"
+        ],
+        "paths": {}
+    },
+    "Academia": {
+        "description": "Academic work.",
+        "pinned": [
+            "/Users/otanan/Google Drive/Academia"
+        ],
+        "paths": {}
+    },
+    "Projects": {
+        "description": "Programming projects.",
+        "pinned": [
+            "/Users/otanan/Google Drive/Programming"
+        ],
+        "paths": [
+            "/Users/otanan/.hammerspoon/Spoons/FinderSessionManager/images",
+            "/Users/otanan/Downloads"
+        ]
+    }
+}

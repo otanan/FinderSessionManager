@@ -21,7 +21,7 @@
 <!-- Project Screenshot -->
 ![Screenshot](images/screenshot.png "Screenshot")
 
-Inspired by [Workona](https://workona.com/) as a tab manager and [Sublime Text's](https://www.sublimetext.com/) own [project manager](https://packagecontrol.io/packages/ProjectManager).
+Inspired by [Workona's](https://workona.com/) tab management system and [Sublime Text's](https://www.sublimetext.com/) own [project manager](https://packagecontrol.io/packages/ProjectManager).
 
 <!-- ## Table of contents
 * [Contact](#contact)
