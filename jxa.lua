@@ -6,6 +6,9 @@
 -- Module object
 jxa = {}
 
+
+-- Common functionality -------------------------------------------------
+jxa.functions = {}
 -- Base to every JXA call
 local jxaBase = [[
     var finder = Application('Finder');
@@ -20,6 +23,16 @@ local jxaBase = [[
     }
 ]]
 
+
+jxa.functions.openPathInTab = [[
+    function openPathInTab(path) {
+        path = path.replace(' ', '\%%20'); // fix spaces
+        finder.openLocation('file://' + path);
+    }
+]]
+
+
+-- Functions -------------------------------------------------
 
 --- Function
 --- Gets the directory each finder window is currently in as well as the window 
@@ -57,6 +70,16 @@ function convertPathsListToPathString(paths)
 end
 
 
+function jxa.openPath(path)
+    -- Call the function
+    local command = jxaBase .. jxa.functions.openPathInTab .. [[
+        openPathInTab("%s");
+    ]]
+    -- Run the command
+    hs.osascript.javascript(string.format(command, path))
+end
+
+
 function jxa.setFinderTabs(paths, focus)
     local command = jxaBase .. [[
         var paths = [%s];
@@ -74,12 +97,7 @@ function jxa.setFinderTabs(paths, focus)
             return windows[i];
         }
 
-
-        function openPathInTab(path) {
-            path = path.replace(' ', '\%%20'); // fix spaces
-            finder.openLocation('file://' + path);
-        }
-
+    ]] .. jxa.functions.openPathInTab .. [[
 
         // Sets the paths while preserving the current open window
         function setTabs(paths) {

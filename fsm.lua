@@ -16,10 +16,13 @@ function loadSettings()
     fsm.sessions = fsm.settings.sessions
 
     -- Set the current session
-    fsm.active = nil
-    -- Allow for default session
-    -- for name in pairs(settings) do
-    --     if settings['default'] ~= nil
+    local default = fsm.settings.default
+    -- Must use __null__ since json is deleting null for some reason
+    if default == '__null__' then
+        fsm.active = nil
+    else
+        fsm.open(default)
+    end
 end
 
 
@@ -33,23 +36,83 @@ end
 --- Returns:
 ---  * true if there are no paths (including pinned), false otherwise
 function fsm.isEmptySession(session)
-    for _, path in pairs(session.pinned) do return false end
-    for _, path in pairs(session.paths) do return false end
+    return  helper.table.isEmpty(session.pinned)
+        and helper.table.isEmpty(session.paths)
+end
 
-    return true
+--- Function
+--- Checks whether there no pins for the active session.
+---
+--- Returns:
+---  * true if the session is either detached or if it has no pins, false
+--- otherwise.
+function fsm.activeHasNoPins()
+    return fsm.active == nil or helper.table.isEmpty(fsm.active.pinned)
+end
+
+
+function fsm.addPinToActive(pin)
+    if fsm.active == nil then
+        print('No active to add pin.')
+        return
+    end
+
+    -- Init an empty table if there are no existing pins
+    -- if fsm.activeHasNoPins() then fsm.active.pinned = {} end
+
+    table.insert(fsm.active.pinned, pin)
+    alert(pin .. ' pinned.')
+    print(pin .. ' pinned.')
+end
+
+
+function fsm.removePinFromActive(pinToRemove)
+    if fsm.activeHasNoPins() then return end
+
+    for key, pin in pairs(fsm.active.pinned) do
+        -- Remove the first instance of the pin
+        if pin == pinToRemove then
+            fsm.active.pinned[key] = nil
+            print('Pin' .. pin .. ' removed.')
+            alert('Pin' .. pin .. ' removed.')
+            return
+        end
+    end
 end
 
 
 function fsm.newSession()
     -- Prompt user for input
-    _, name = hs.dialog.textPrompt(
-        'New session name: ',
-        'Please input a name for the new session.'
+    local cancelText = 'Cancel'
+    -- Name input ----------
+    buttonText, name = hs.dialog.textPrompt(
+        'New session name',
+        'Please input a name for the new session.',
+        '', '', cancelText
     )
-    _, description = hs.dialog.textPrompt(
+
+    if buttonText == cancelText then
+        print('New session canceled')
+        return
+    end
+
+    if name == '' then
+        alert('No session name provided.')
+        print('New session canceled.')
+        return
+    end
+
+    -- Description input ----------
+    buttonText, description = hs.dialog.textPrompt(
         'New session description: ',
         'Provide a description for ' .. name .. ' session.'
     )
+
+    if buttonText == cancelText then
+        alert('New session canceled.')
+        print('New session canceled')
+        return
+    end
 
     -- Update the settings
     -- Default to home folder
@@ -115,7 +178,7 @@ end
 --- changing sessions. Will save fsm state to file.
 function fsm.update()
     if fsm.active == nil then
-        print('No active session...')
+        print('No active session.')
         return
     end
 
@@ -169,6 +232,9 @@ end
 
 
 function fsm.newChooser()
+    image = hs.image.imageFromURL('https://cdn.pixabay.com/photo/2021/02/25/14/12/rinnegan-6049194_960_720.png')
+
+
     local choices = {}
 
     -- Menu options --------------------------
@@ -190,6 +256,7 @@ function fsm.newChooser()
         table.insert(choices, {
             text=session.name,
             subText=desc,
+            image=image,
         })
     end
 
@@ -210,14 +277,93 @@ end
 
 
 -- Menu -------------------------------------------------
-fsm.menubar = hs.menubar.new()
-fsm.menubar:setClickCallback(function() fsm.chooser:show() end)
+fsm.menu = {}
+fsm.menu.bar = hs.menubar.new()
+
+-- Menu table creation --------------------------
+function fsm.menu.newSession()
+    return { title='New Session', fn=fsm.newSession }
+end
+
+
+function fsm.menu.addPin()
+    local title = 'Pin path'
+    if fsm.active == nil then
+        return { title=title, disabled=true }
+    end
+
+    -- Open a file explorer to choose a new pin
+    local function browserForPin()
+        local paths = hs.dialog.chooseFileOrFolder(
+            'this is a message',
+            '', true, true, false
+        )
+
+        -- Keys are strings for some reason
+        path = paths['1']
+
+        -- Allow multiple selection is false, there will only be one path
+        fsm.addPinToActive(path)
+        -- Open path
+        jxa.openPath(path)
+    end
+
+    return { title=title, fn=browserForPin }
+end
+
+function fsm.menu.removePins()
+    local removePinsTable
+    if fsm.activeHasNoPins() then
+        return {
+            title='Remove pins',
+            disabled=true
+        }   
+    end 
+
+    -- Valid active session with pins
+    local pinsTable = {}
+    for _, pin in pairs(fsm.active.pinned) do
+        table.insert(pinsTable, {
+            title=pin,
+            fn=function(_, pin) fsm.removePinFromActive(pin.title) end
+        })
+    end
+
+    return {
+        title='Remove pins',
+        menu=pinsTable,
+    }
+end
+
+
+local function setMenu(keys)
+    if keys.alt then
+        alert('alt modifier was pressed')
+        fsm.chooser:show()
+        return
+    end
+
+    -- Table setup ----------
+    return {
+        fsm.menu.newSession(),
+        { title='-' }, -- separator
+        fsm.menu.addPin(),
+        fsm.menu.removePins(),
+     }
+end
+fsm.menu.bar:setMenu(setMenu)
+
+
 
 function fsm.updateMenu()
-    local state = fsm.active.name
-    if state == nil then state = 'None' end
+    local state
+    if fsm.active == nil then
+        state = 'None'
+    else
+        state = fsm.active.name
+    end
 
-    fsm.menubar:setTitle('FSM: ' .. state)
+    fsm.menu.bar:setTitle('FSM: ' .. state)
 end
 
 

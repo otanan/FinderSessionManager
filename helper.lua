@@ -25,6 +25,13 @@ function helper.table.clear(tab)
 end
 
 
+-- Check if table is empty
+function helper.table.isEmpty(tab)
+    for _, item in pairs(tab) do return false end
+    return true
+end
+
+
 -- Concatenate two arrays
 function helper.list.join(tab1, tab2)
     joinedTable = {}
@@ -34,6 +41,8 @@ function helper.list.join(tab1, tab2)
 
     return joinedTable
 end
+
+
 
 
 -- JSON -------------------------------------------------

@@ -43,6 +43,7 @@ end
 function fsm.start()
     loadSettings()
     fsm.newChooser()
+    fsm.softUpdate()
 
     -- Start watchers --------------------------
     activeWatcher = hs.application.watcher.new(activationWatcher)
