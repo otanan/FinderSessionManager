@@ -1,45 +1,61 @@
--------------------------------------------------------------------------------
-------------------------- Helper functionality -------------------------
--------------------------------------------------------------------------------
+--- === helper.lua ===
+--- Author: Jonathan Delgado
+---
+--- Helper scripts that provides basic programmatic functionality.
+---
+-- Module object
+helper = {}
 
-------------------------- Table operations -------------------------
--- Check if value exists in list
-function hasValue(tab, val)
-    for index, value in ipairs(tab) do
+
+-- Table operations -------------------------------------------------
+helper.table = {}
+helper.list = {}
+-- Check if value exists in table
+function helper.table.has(tab, val)
+    for _, value in ipairs(tab) do
         if value == val then return true end
     end
     return false
 end
 
 
--- Clear an array
-function clearList(list)
-    for key in pairs(list) do
-        list[key] = nil
-    end
+-- Clear a table
+function helper.table.clear(tab)
+    for key in pairs(tab) do tab[key] = nil end
 end
 
 
-------------------------- Json -------------------------
+-- Concatenate two arrays
+function helper.list.join(tab1, tab2)
+    joinedTable = {}
+
+    for _, value in pairs(tab1) do table.insert(joinedTable, value) end
+    for _, value in pairs(tab2) do table.insert(joinedTable, value) end
+
+    return joinedTable
+end
+
+
+-- JSON -------------------------------------------------
+helper.json = {}
 
 
 -- Convert the file name to a proper relative path
-function jsonFname(fname)
-    return workingDir .. fname .. '.json'
-end
+function jsonFilename(fname) return workingDir .. fname .. '.json' end
 
 
-function jsonLoad(fname)
-    local jsonFile = io.open(jsonFname(fname), 'r')
+function helper.json.load(fname)
+    local jsonFile = io.open(jsonFilename(fname), 'r')
     local jsonData = jsonFile:read('*a')
     local jsonAsTable = json.decode(jsonData)
     jsonFile:close()
     return jsonAsTable
 end
 
-function jsonDump(tab, fname)
+
+function helper.json.dump(tab, fname)
     local jsonData = json.encode(tab)
-    local jsonFile = assert(io.open(jsonFname(fname), 'w'))
+    local jsonFile = assert(io.open(jsonFilename(fname), 'w'))
     jsonFile:write(jsonData)
     jsonFile:close()
     -- Prettify the json
@@ -47,21 +63,5 @@ function jsonDump(tab, fname)
 end
 
 
-
--- function sleep(n)
---     os.execute("sleep " .. tonumber(n))
--- end
-
-
--- function centerWindow()
---     print('Centering window...')
---     local win = hs.window.focusedWindow()
---     local f = win:frame()
---     local max = win:screen():frame()
-
---     f.w = 1200
---     f.h = 800
---     f.x = (max.w - f.w) / 2
---     f.y = (max.h - f.h) / 2
---     win:setFrame(f)
--- end
+-- Exit -------------------------------------------------
+return helper

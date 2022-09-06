@@ -1,111 +1,46 @@
--------------------------------------------------------------------------------
-------------------------- Management System -------------------------
--------------------------------------------------------------------------------
+--- === fsm.lua ===
+--- Author: Jonathan Delgado
+---
+--- FinderSessionManager
+---
+-- Module object
+fsm = {}
 
 
--- Load the given session
-function openSession(session)
-    -- Get focus
-    hs.application.launchOrFocus('Finder')
+-- Initialization -------------------------------------------------
+-- Load the settings, should only need to be done once.
+function loadSettings()
+    print('Loading FSM settings...')
+    -- Settings defines projects and their pinned folders
+    fsm.settings = helper.json.load('settings')
+    fsm.sessions = fsm.settings.sessions
 
-    if session == currentSession then
-        alert('Session already open.')
-        print('Session unchanged.')
-        do return end
-    end
-
-    -- Update current session before changing
-    if currentSession ~= nil then updateSessions() end
-
-    print('Loading session: ' .. session)
-
-    ---------- Setting tab session ----------
-    -- Loop through folders and make path array string for jxa
-    pinnedPathString = ''
-    for _, path in pairs(getPinned(session)) do
-        pinnedPathString = pinnedPathString .. '"' .. path .. '"' .. ', '
-    end
-
-    pathString = ''
-    for _, path in pairs(getPaths(session)) do
-        pathString = pathString .. '"' .. path .. '"' .. ', '
-    end
-
-
-    setTabsWithPathArrayStrings(pinnedPathString, pathString, getFocus(session))
-    currentSession = session
-    -- Padding to indicate complete session
-    print()
+    -- Set the current session
+    fsm.active = nil
+    -- Allow for default session
+    -- for name in pairs(settings) do
+    --     if settings['default'] ~= nil
 end
 
 
-function setTabsWithPathArrayStrings(pinnedPathString, pathString, focus)
-    -- Fix empty strings throwing errors with format
-    if pathString == '' then pathString = ' ' end
-    if pinnedPathString == '' then pinnedPathString = ' ' end
-    command = string.format(
-        jxaSetTabsCommand, pinnedPathString, pathString, focus
-    )
-    hs.osascript.javascript(command)
+-- Sessions -------------------------------------------------
+--- Function
+--- Reports whether the session has no associated paths.
+---
+--- Parameters:
+---  * session - the session to inspect.
+---
+--- Returns:
+---  * true if there are no paths (including pinned), false otherwise
+function fsm.isEmptySession(session)
+    for _, path in pairs(session.pinned) do return false end
+    for _, path in pairs(session.paths) do return false end
+
+    return true
 end
 
 
--- Update the sessions dictionary then the settings file
-function updateSessions()
-    -- alert("Updating finder session...") 
-    local data = getOpenFinderPaths(finder)
-    paths = data[1]
-    focus = data[2]
-
-    if currentSession == nil then
-        print('No active session...')
-        return
-    end
-
-    local savedPaths = getPaths(currentSession)
-    local pinned = getPinned(currentSession)
-
-    -- Clear old paths
-    clearList(savedPaths)
-    -- Update paths, skip pinned paths
-    for _, path in pairs(paths) do
-        if not hasValue(pinned, path) then
-            table.insert(savedPaths, path)
-        end
-    end
-
-    -- Set focus path
-    setFocus(currentSession, focus)
-
-    -- Update the actual file
-    updateSettings()
-end
-
-
--- Get the paths currently open in finder as an array and the focused path
--- Returns a table with two elements, the paths, and the focus path
-function getOpenFinderPaths()
-    _, data = hs.osascript.javascript(jxaGetPathsCommand)
-    return data
-end
-
-
-function closeFinderWindows()
-    -- Get focus for menu item
-    hs.application.launchOrFocus('Finder')
-    finder:selectMenuItem({'File', 'Close Window'})
-end
-
-
--- Discontinue tab tracking
-function detachSession()
-    updateSessions()
-    alert('Session detached.')
-    currentSession = nil
-end
-
-
-function newSession()
+function fsm.newSession()
     -- Prompt user for input
     _, name = hs.dialog.textPrompt(
         'New session name: ',
@@ -118,11 +53,173 @@ function newSession()
 
     -- Update the settings
     -- Default to home folder
-    addSessionToSettings(name, description, {}, {'/Users/Otanan'})
-    -- Open file
-    updateSettings()
-    -- Remake chooser to reflect this new session option
-    initChooser()
+    fsm.sessions[name] = {
+        description=description,
+        pinned={},
+        paths={'/Users/Otanan'},
+    }
+    session = fsm.sessions[name]
+    -- Set focus
+    session.focus = session.pinned[0]
+
     -- Open this session
-    openSession(name)
+    fsm.open(session)
+    -- Remake chooser to reflect this new session option
+    fsm.newChooser()
 end
+
+
+-- Load the given session
+function fsm.open(name)
+    -- Get focus
+    hs.application.launchOrFocus('Finder')
+
+    session = fsm.sessions[name]
+    -- Nothing to change
+    if session == fsm.active then
+        alert('Session already open.')
+        print('Session unchanged.')
+        do return end
+    end
+
+    -- Changing session ----------
+
+    -- Update current session before changing
+    if fsm.active ~= nil then fsm.update() end
+
+    print('Loading session: ' .. session.name)
+
+    paths = helper.list.join(session.pinned, session.paths)
+    jxa.setFinderTabs(paths, session.focus)
+    
+    fsm.active = session
+    fsm.softUpdate()
+    -- Padding
+    print()
+end
+
+
+-- Discontinue tab tracking
+function fsm.detach()
+    fsm.update()
+    fsm.active = nil
+    alert('Session detached.')
+    fsm.softUpdate()
+end
+
+
+
+-- Updating -------------------------------------------------
+--- Function
+--- Updates all relevant information. Typically done on focus change or before
+--- changing sessions. Will save fsm state to file.
+function fsm.update()
+    if fsm.active == nil then
+        print('No active session...')
+        return
+    end
+
+    local paths, focus = table.unpack(jxa.getFinderPaths(finder))
+
+    local activePaths = fsm.active.paths
+    local activePinned = fsm.active.pinned
+    fsm.active.focus = focus
+
+    -- Clear old paths
+    helper.table.clear(activePaths)
+    -- Update paths, skip activePinned paths
+    for _, path in pairs(paths) do
+        if not helper.table.has(activePinned, path) then
+            table.insert(activePaths, path)
+        end
+    end
+
+    -- Update the actual file
+    helper.json.dump(fsm.settings, 'settings')
+    print('Settings updated.')
+end
+
+
+--- Function
+--- Update views while not updating settings file. Useful for things like
+--- updating menubar for a new session being opened, which wouldn't need a file
+--- update.
+function fsm.softUpdate()
+    fsm.updateMenu()
+end
+
+
+-- Chooser -------------------------------------------------
+-- Choice function for chooser
+local function chosen(choice)
+    -- Get focus regardless
+    hs.application.launchOrFocus('Finder')
+
+    if choice == nil then
+        print('No choice made.')
+    elseif choice.uuid ~= nil then
+        -- Cases based on identifier
+        if choice.uuid == '__new__' then
+            fsm.newSession()
+        end
+    else 
+        fsm.open(choice.text)
+    end
+end
+
+
+function fsm.newChooser()
+    local choices = {}
+
+    -- Menu options --------------------------
+    table.insert(choices, {
+        text='New session',
+        subText='Create a new finder session.',
+        -- ID for identifying when a menu function is called
+        uuid='__new__'
+    })
+    local numChoices = 1
+
+    -- Create choices
+    for _, session in pairs(fsm.sessions) do
+        numChoices = numChoices + 1
+
+        local desc = session.description
+        if desc == nil then desc = '' end
+
+        table.insert(choices, {
+            text=session.name,
+            subText=desc,
+        })
+    end
+
+    -- Make the chooser
+    fsm.chooser = hs.chooser.new(chosen)
+
+    -- Customize the chooser
+    fsm.chooser:choices(choices)
+    fsm.chooser:searchSubText(true)
+    -- Add one for padding
+    if numChoices < 5 then
+        fsm.chooser:rows(numChoices + 1)
+    else
+        fsm.chooser:rows(6)
+    end
+    fsm.chooser:bgDark(true)
+end
+
+
+-- Menu -------------------------------------------------
+fsm.menubar = hs.menubar.new()
+fsm.menubar:setClickCallback(function() fsm.chooser:show() end)
+
+function fsm.updateMenu()
+    local state = fsm.active.name
+    if state == nil then state = 'None' end
+
+    fsm.menubar:setTitle('FSM: ' .. state)
+end
+
+
+-- Exit -------------------------------------------------
+return fsm
