@@ -50,6 +50,9 @@ function getDescription(session)
     if desc == nil then desc = '' end
     return desc
 end
+function getFocus(session)
+    return settings[session].focus
+end
 
 
 ---------- Settings writing ----------

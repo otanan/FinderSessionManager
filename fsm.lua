@@ -32,7 +32,7 @@ function openSession(session)
     end
 
 
-    setTabsWithPathArrayStrings(pinnedPathString, pathString, focus)
+    setTabsWithPathArrayStrings(pinnedPathString, pathString, getFocus(session))
     currentSession = session
     -- Padding to indicate complete session
     print()
@@ -46,8 +46,6 @@ function setTabsWithPathArrayStrings(pinnedPathString, pathString, focus)
     command = string.format(
         jxaSetTabsCommand, pinnedPathString, pathString, focus
     )
-    print('PRINTING COMMAND')
-    print(command)
     hs.osascript.javascript(command)
 end
 
