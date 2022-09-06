@@ -1,26 +1,32 @@
 {
     "Downloads": {
-        "description": "Downloads folder and miscellaneous file interaction.",
+        "focus": "/Users/otanan/Google Drive/Academia",
         "pinned": [
             "/Users/otanan/Downloads"
         ],
-        "paths": {}
-    },
-    "Academia": {
-        "description": "Academic work.",
-        "pinned": [
+        "paths": [
             "/Users/otanan/Google Drive/Academia"
         ],
-        "paths": {}
+        "description": "Downloads folder and miscellaneous file interaction."
     },
     "Projects": {
-        "description": "Programming projects.",
+        "focus": "/Users/otanan",
         "pinned": [
             "/Users/otanan/Google Drive/Programming"
         ],
         "paths": [
-            "/Users/otanan/.hammerspoon/Spoons/FinderSessionManager/images",
-            "/Users/otanan/Downloads"
-        ]
+            "/Users/otanan"
+        ],
+        "description": "Programming projects."
+    },
+    "Academia": {
+        "focus": "/Users/otanan/Google Drive/Academia",
+        "pinned": [
+            "/Users/otanan/Google Drive/Academia"
+        ],
+        "paths": [
+            "/Users/otanan"
+        ],
+        "description": "Academic work."
     }
 }

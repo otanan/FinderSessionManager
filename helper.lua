@@ -21,7 +21,6 @@ end
 
 
 ------------------------- Json -------------------------
-json = require('lunajson')
 
 
 -- Convert the file name to a proper relative path

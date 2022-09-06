@@ -24,8 +24,8 @@ jxaGetPathsCommand = jxaBase .. [[
         var paths = [];
         var windows = finder.finderWindows();
         for (var window of windows) paths.push(pathFromWindow(window));
-        
-        return paths
+        // First path is focus path
+        return [paths, pathFromWindow(windows[0])]
     }
 
     // Run the script
@@ -36,6 +36,7 @@ jxaGetPathsCommand = jxaBase .. [[
 jxaSetTabsCommand = jxaBase .. [[
     var pinnedPaths = [%s];
     var paths = [%s];
+    var focus = "%s"
 
     // Close all tabs first
     function closeTabsButOne() {
@@ -79,4 +80,6 @@ jxaSetTabsCommand = jxaBase .. [[
     }
 
     setTabs(pinnedPaths.concat(paths));
+    // Draw focus by setting tab again
+    openPathInTab(focus);
 ]]
