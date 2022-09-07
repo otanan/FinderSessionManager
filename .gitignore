@@ -35,4 +35,5 @@ _archive
 
 #------------- Project-specific settings -------------#
 icons/*
+!icons/.gitkeep
 settings.json
