@@ -94,7 +94,7 @@ end
 function jxa.setFinderTabs(paths, focus)
     local command = jxaBase .. [[
         var paths = [%s];
-        var focus = "%s"
+        var focus = "%s".trim();
 
         // Close tabs first
         function closeTabsButOne() {
@@ -134,7 +134,8 @@ function jxa.setFinderTabs(paths, focus)
 
         setTabs(paths);
         // Draw focus by setting tab again
-        openPathInTab(focus);
+        if (focus.length !== 0)
+            openPathInTab(focus);
     ]]
     local pathString = convertPathsListToPathString(paths)
     -- Run the command

@@ -5,8 +5,7 @@
 ---
 -- Module object
 fsm = {}
-
-
+fsm.finder = require(workingDir .. 'finderLink')
 imageHelper = require(workingDir .. 'imageHelper')
 
 -- Initialization -------------------------------------------------
@@ -100,6 +99,14 @@ function fsm.removePinFromActive(pinToRemove)
 end
 
 
+-- Returns whether the active session is the default session
+function fsm.activeIsDefault()
+    if fsm.active == nil then return fsm.settings.default == '__null__' end
+
+    return fsm.active.name == fsm.settings.default
+end
+
+
 function fsm.newSession()
     -- Prompt user for input
     local cancelButtonLabel = 'Cancel'
@@ -155,21 +162,30 @@ end
 
 -- Load the given session
 function fsm.open(name)
-    -- Get focus
-    hs.application.launchOrFocus('Finder')
-
     local session = fsm.sessions[name]
+
     -- Nothing to change
     if session == fsm.active then
-        alert('Session already open.')
-        print('Session unchanged.')
+        if fsm.finder.isOpen() then
+            -- Window already open, nothing to be done
+            alert('Session already open.')
+            print('Session unchanged.')
+        else
+            -- Window was closed, open the pinned tabs
+            fsm.finder.open()
+            jxa.setFinderTabs(fsm.active.pinned, fsm.active.focus)
+        end 
+
         do return end
     end
 
     -- Changing session ----------
-
     -- Update current session before changing
     if fsm.active ~= nil then fsm.update() end
+
+    -- Get focus or open new window regardless
+    -- Done after update since this can open a new window
+    fsm.finder.open()
 
     print('Loading session: ' .. session.name)
 
@@ -236,6 +252,11 @@ function fsm.update()
         end
     end
 
+    fsm.updateSettingsFile()
+end
+
+
+function fsm.updateSettingsFile()
     -- Update the actual file
     helper.json.dump(fsm.settings, 'settings')
     print('Settings updated.')
@@ -247,18 +268,20 @@ end
 --- updating menubar for a new session being opened, which wouldn't need a file
 --- update.
 function fsm.softUpdate()
-    fsm.updateMenu()
+    fsm.menu.update()
 end
 
 
 -- Chooser -------------------------------------------------
 -- Choice function for chooser
 local function chosen(choice)
+
     -- Get focus regardless
-    hs.application.launchOrFocus('Finder')
+    fsm.finder.focus()
 
     if choice == nil then
         print('No choice made.')
+        -- Get focus for detached session
     elseif choice.uuid ~= nil then
         -- Cases based on identifier
         if choice.uuid == '__new__' then
@@ -453,6 +476,30 @@ function fsm.menu.setSessionIcon()
     return { title=title, fn=getImageForIcon }
 end
 
+
+function fsm.menu.setSessionDefault()
+    local title = 'Set as Default Session'
+
+    if fsm.activeIsDefault() then return { title=title, disabled=true } end
+
+    local function setActiveSessionAsDefault()
+        if fsm.active == nil then
+            fsm.settings.default = '__null__'
+            -- Need to update settings here since settings aren't usually
+                -- updated when session is detached
+            fsm.updateSettingsFile()
+        else fsm.settings.default = fsm.active.name end
+
+        -- Logging
+        alert('Default updated.')
+        print('Changing default to: ' .. default)
+    end
+
+    
+    return { title=title, fn=setActiveSessionAsDefault }
+end
+
+
 local function setMenu(keys)
     if keys.alt then
         -- Just show the search when clicking with Alt modifier
@@ -471,14 +518,15 @@ local function setMenu(keys)
         fsm.menu.pinFocused(),
         fsm.menu.removePins(),
         { title='-' },
-        fsm.menu.setSessionIcon()
+        fsm.menu.setSessionIcon(),
+        fsm.menu.setSessionDefault(),
      }
 end
 fsm.menu.bar:setMenu(setMenu)
 
 
 
-function fsm.updateMenu()
+function fsm.menu.update()
     local state, image
     if fsm.active == nil then
         state = 'None'
@@ -491,6 +539,17 @@ function fsm.updateMenu()
     -- if image ~= nil then
     --     fsm.menu.bar:setIcon(imageHelper.loadImage(image):setSize({w=16,h=16}))
     -- end
+end
+
+
+function fsm.menu.show()
+    fsm.menu.bar:returnToMenuBar()
+    fsm.menu.update()
+end
+
+
+function fsm.menu.hide()
+    fsm.menu.bar:removeFromMenuBar()
 end
 
 

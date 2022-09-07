@@ -16,11 +16,13 @@ fsm = require(workingDir .. 'fsm')
 -- Watchers -------------------------------------------------
 -- Callback functions ----------
 local function finderActivated()
-    fsm.update()
+    -- fsm.update()
+    fsm.menu.show()
 end
 
 local function finderDeactivated()
     fsm.update()
+    fsm.menu.hide()
 end
 
 
