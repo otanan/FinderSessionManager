@@ -162,36 +162,20 @@ end
 
 -- Load the given session
 function fsm.open(name)
-    local session = fsm.sessions[name]
-
-    -- Nothing to change
-    if session == fsm.active then
-        if fsm.finder.isOpen() then
-            -- Window already open, nothing to be done
-            alert('Session already open.')
-            print('Session unchanged.')
-        else
-            -- Window was closed, open the pinned tabs
-            fsm.finder.open()
-            jxa.setFinderTabs(fsm.active.pinned, fsm.active.focus)
-        end 
-
-        do return end
-    end
-
-    -- Changing session ----------
     -- Update current session before changing
     if fsm.active ~= nil then fsm.update() end
 
-    -- Get focus or open new window regardless
-    -- Done after update since this can open a new window
+    -- Get focus, if window was closed the home directory won't be saved
+    -- since update was already called
     fsm.finder.open()
 
+    local session = fsm.sessions[name]
     print('Loading session: ' .. session.name)
 
     paths = helper.list.join(session.pinned, session.paths)
     jxa.setFinderTabs(paths, session.focus)
     
+
     fsm.active = session
     fsm.softUpdate()
     -- Padding
@@ -275,9 +259,8 @@ end
 -- Chooser -------------------------------------------------
 -- Choice function for chooser
 local function chosen(choice)
-
-    -- Get focus regardless
-    fsm.finder.focus()
+    -- Get focus (if a window exists) regardless of choice
+    if fsm.finder.isOpen() then fsm.finder.focus() end
 
     if choice == nil then
         print('No choice made.')
@@ -331,11 +314,9 @@ function fsm.newChooser()
     fsm.chooser:choices(choices)
     fsm.chooser:searchSubText(true)
     -- Add one for padding
-    if numChoices < 5 then
-        fsm.chooser:rows(numChoices + 1)
-    else
-        fsm.chooser:rows(6)
-    end
+    local rows = 7
+    if numChoices < 5 then rows = numChoices + 1 end
+    fsm.chooser:rows(rows)
     fsm.chooser:bgDark(true)
 end
 

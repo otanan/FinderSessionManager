@@ -123,7 +123,7 @@ function helper.json.dump(tab, fname)
     jsonFile:write(jsonData)
     jsonFile:close()
     -- Prettify the json
-    hs.execute('python3 ' .. workingDir .. 'json_pretty.py ' .. workingDir .. fname)
+    -- hs.execute('python3 ' .. workingDir .. 'json_pretty.py ' .. workingDir .. fname)
 end
 
 
