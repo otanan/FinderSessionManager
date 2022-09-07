@@ -61,6 +61,17 @@ function jxa.getFinderPaths()
 end
 
 
+function jxa.getFocusedFinderPath()
+    local command = jxaBase .. [[
+        var windows = finder.finderWindows();
+        pathFromWindow(windows[0]);
+    ]]
+
+    _, data = hs.osascript.javascript(command)
+    return data
+end
+
+
 function convertPathsListToPathString(paths)
     pathString = ''
     for _, path in pairs(paths) do

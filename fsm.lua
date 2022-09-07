@@ -7,12 +7,17 @@
 fsm = {}
 
 
+imageHelper = require(workingDir .. 'imageHelper')
+
 -- Initialization -------------------------------------------------
 -- Load the settings, should only need to be done once.
 function loadSettings()
     print('Loading FSM settings...')
     -- Settings defines projects and their pinned folders
     fsm.settings = helper.json.load('settings')
+    -- New to make a new settings file
+    if fsm.settings == nil then fsm.settings = newSettings() end
+
     fsm.sessions = fsm.settings.sessions
 
     -- Set the current session
@@ -23,6 +28,16 @@ function loadSettings()
     else
         fsm.open(default)
     end
+end
+
+
+-- New settings file
+function newSettings()
+    local settingsTemplate = '{ "default": "__null__", "sessions": {} }'
+    local file = io.open(helper.json.nameToPath('settings'), 'w')
+    file:write(settingsTemplate)
+    file:close()
+    return json.decode(settingsTemplate)
 end
 
 
@@ -57,8 +72,12 @@ function fsm.addPinToActive(pin)
         return
     end
 
-    -- Init an empty table if there are no existing pins
-    -- if fsm.activeHasNoPins() then fsm.active.pinned = {} end
+    -- Check if already pinned
+    if helper.table.has(fsm.active.pinned, pin) then
+        alert(pin .. ' already pinned.')
+        print(pin .. ' already pinned.')
+        return
+    end
 
     table.insert(fsm.active.pinned, pin)
     alert(pin .. ' pinned.')
@@ -73,8 +92,8 @@ function fsm.removePinFromActive(pinToRemove)
         -- Remove the first instance of the pin
         if pin == pinToRemove then
             fsm.active.pinned[key] = nil
-            print('Pin' .. pin .. ' removed.')
-            alert('Pin' .. pin .. ' removed.')
+            print('Pin ' .. pin .. ' removed.')
+            alert('Pin ' .. pin .. ' removed.')
             return
         end
     end
@@ -83,15 +102,15 @@ end
 
 function fsm.newSession()
     -- Prompt user for input
-    local cancelText = 'Cancel'
+    local cancelButtonLabel = 'Cancel'
     -- Name input ----------
-    buttonText, name = hs.dialog.textPrompt(
+    local buttonLabel, name = hs.dialog.textPrompt(
         'New session name',
         'Please input a name for the new session.',
-        '', '', cancelText
+        '', '', cancelButtonLabel
     )
 
-    if buttonText == cancelText then
+    if buttonLabel == cancelButtonLabel then
         print('New session canceled')
         return
     end
@@ -103,30 +122,32 @@ function fsm.newSession()
     end
 
     -- Description input ----------
-    buttonText, description = hs.dialog.textPrompt(
+    local buttonLabel, description = hs.dialog.textPrompt(
         'New session description: ',
         'Provide a description for ' .. name .. ' session.'
     )
 
-    if buttonText == cancelText then
+    if buttonLabel == cancelButtonLabel then
         alert('New session canceled.')
         print('New session canceled')
         return
     end
+    alert(description)
 
     -- Update the settings
     -- Default to home folder
     fsm.sessions[name] = {
+        name=name,
         description=description,
         pinned={},
         paths={'/Users/Otanan'},
     }
-    session = fsm.sessions[name]
+    local session = fsm.sessions[name]
     -- Set focus
-    session.focus = session.pinned[0]
+    session.focus = session.paths[0]
 
     -- Open this session
-    fsm.open(session)
+    fsm.open(name)
     -- Remake chooser to reflect this new session option
     fsm.newChooser()
 end
@@ -137,7 +158,7 @@ function fsm.open(name)
     -- Get focus
     hs.application.launchOrFocus('Finder')
 
-    session = fsm.sessions[name]
+    local session = fsm.sessions[name]
     -- Nothing to change
     if session == fsm.active then
         alert('Session already open.')
@@ -162,6 +183,18 @@ function fsm.open(name)
 end
 
 
+-- Delete active session
+function fsm.deleteActive()
+    if fsm.active == nil then return end
+
+    fsm.sessions[fsm.active.name] = nil
+    fsm.detach()
+    -- Remake the chooser to reflect new options
+    fsm.newChooser()
+end
+
+
+
 -- Discontinue tab tracking
 function fsm.detach()
     fsm.update()
@@ -182,7 +215,13 @@ function fsm.update()
         return
     end
 
-    local paths, focus = table.unpack(jxa.getFinderPaths(finder))
+    local paths, focus
+    local data = jxa.getFinderPaths()
+    if data == nil then
+        -- No finder windows opened
+        paths = {}
+        focus = ''
+    else paths, focus = table.unpack(data) end
 
     local activePaths = fsm.active.paths
     local activePinned = fsm.active.pinned
@@ -232,9 +271,6 @@ end
 
 
 function fsm.newChooser()
-    image = hs.image.imageFromURL('https://cdn.pixabay.com/photo/2021/02/25/14/12/rinnegan-6049194_960_720.png')
-
-
     local choices = {}
 
     -- Menu options --------------------------
@@ -252,6 +288,11 @@ function fsm.newChooser()
 
         local desc = session.description
         if desc == nil then desc = '' end
+
+        local image
+        if session.image ~= nil then
+            image = imageHelper.loadImage(session.image)
+        end
 
         table.insert(choices, {
             text=session.name,
@@ -282,21 +323,47 @@ fsm.menu.bar = hs.menubar.new()
 
 -- Menu table creation --------------------------
 function fsm.menu.newSession()
-    return { title='New Session', fn=fsm.newSession }
+    return { title='New Session...', fn=fsm.newSession }
+end
+
+
+function fsm.menu.detachSession()
+    local title = 'Detach Session'
+    if fsm.active == nil then
+        return { title=title, disabled=true }
+    end
+    return { title=title, fn=fsm.detach }
+end
+
+
+function fsm.menu.deleteActiveSession()
+    local title = 'Delete Active Session'
+    if fsm.active == nil then return { title=title, disabled=true } end
+
+    local function deleteActiveSessionPrompt()
+        local confirmButtonLabel = 'Confirm'
+
+        buttonLabel = hs.dialog.blockAlert(
+            'Delete: ' .. fsm.active.name,
+            '',
+            confirmButtonLabel, 'Cancel'
+        )
+
+        if buttonLabel == confirmButtonLabel then fsm.deleteActive() end
+    end
+
+    return { title=title, fn=deleteActiveSessionPrompt }
 end
 
 
 function fsm.menu.addPin()
-    local title = 'Pin path'
-    if fsm.active == nil then
-        return { title=title, disabled=true }
-    end
+    local title = 'Pin Path...'
+    if fsm.active == nil then return { title=title, disabled=true } end
 
     -- Open a file explorer to choose a new pin
     local function browserForPin()
         local paths = hs.dialog.chooseFileOrFolder(
-            'this is a message',
-            '', true, true, false
+            'Choose path to pin', '', true, true, false
         )
 
         -- Keys are strings for some reason
@@ -311,11 +378,27 @@ function fsm.menu.addPin()
     return { title=title, fn=browserForPin }
 end
 
+
+function fsm.menu.pinFocused()
+    local title = 'Pin Focused Tab'
+    if fsm.active == nil then return { title=title, disabled=true } end
+
+    -- Open a file explorer to choose a new pin
+    local function getFocusedAndPin()
+        local focusedPath = jxa.getFocusedFinderPath()
+        fsm.addPinToActive(focusedPath)
+    end
+
+    return { title=title, fn=getFocusedAndPin }
+end
+
+
 function fsm.menu.removePins()
+    local title = 'Remove Pins'
     local removePinsTable
     if fsm.activeHasNoPins() then
         return {
-            title='Remove pins',
+            title=title,
             disabled=true
         }   
     end 
@@ -330,25 +413,65 @@ function fsm.menu.removePins()
     end
 
     return {
-        title='Remove pins',
+        title=title,
         menu=pinsTable,
     }
 end
 
 
+function fsm.menu.setSessionIcon()
+    local title = 'Set Session Icon'
+    if fsm.active == nil then
+        return { title=title, disabled=true }
+    end
+
+    local function getImageForIcon()
+        local path = imageHelper.chooseImageFromFileSystem()
+
+        -- Canceled icon choice.
+        if path == nil then return end
+
+        -- Delete any existing icons
+        if fsm.active.image ~= nil then
+            local oldPath = imageHelper.getSavedImagePath(fsm.active.image)
+            helper.file.delete(oldPath)
+        end
+
+        -- Save the image 
+        local imageName = imageHelper.saveImage(path)
+        local image = imageHelper.loadImage(imageName)
+
+        fsm.active.image = imageName
+        -- Save result to file
+        fsm.update()
+        -- Update the chooser to show the image
+        fsm.newChooser()
+
+        alert('Session icon updated.')
+    end
+
+    return { title=title, fn=getImageForIcon }
+end
+
 local function setMenu(keys)
     if keys.alt then
-        alert('alt modifier was pressed')
+        -- Just show the search when clicking with Alt modifier
         fsm.chooser:show()
-        return
+        -- Don't open the menu
+        return {}
     end
 
     -- Table setup ----------
     return {
         fsm.menu.newSession(),
+        fsm.menu.detachSession(),
+        fsm.menu.deleteActiveSession(),
         { title='-' }, -- separator
         fsm.menu.addPin(),
+        fsm.menu.pinFocused(),
         fsm.menu.removePins(),
+        { title='-' },
+        fsm.menu.setSessionIcon()
      }
 end
 fsm.menu.bar:setMenu(setMenu)
@@ -356,14 +479,18 @@ fsm.menu.bar:setMenu(setMenu)
 
 
 function fsm.updateMenu()
-    local state
+    local state, image
     if fsm.active == nil then
         state = 'None'
     else
         state = fsm.active.name
+        image = fsm.active.image
     end
 
     fsm.menu.bar:setTitle('FSM: ' .. state)
+    -- if image ~= nil then
+    --     fsm.menu.bar:setIcon(imageHelper.loadImage(image):setSize({w=16,h=16}))
+    -- end
 end
 
 

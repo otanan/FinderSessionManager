@@ -43,6 +43,59 @@ function helper.list.join(tab1, tab2)
 end
 
 
+-- File Operations -------------------------------------------------
+helper.file = {}
+
+
+function helper.file.delete(path)
+    print('Deleting: ' .. path)
+    hs.execute('rm ' .. path)
+end
+
+function helper.file.copy(oldPath, newPath)
+    hs.execute('cp ' .. oldPath .. ' ' .. newPath)
+end
+
+
+-- Converts a path to a filename, i.e. folder/image.png will be image.png
+--- Function
+--- Pulls the file name from a path. i.e. images/screenshot.png will return
+--- screenshot.png
+---
+--- Parameters:
+---  * path - string of the full path.
+---
+--- Returns:
+---  * filename string
+function helper.file.name(path) return path:match("^.+/(.+)$") end
+
+
+--- Function
+--- Gets the full path to a parent folder containing a given file.
+--- i.e. images/file.txt will return images/
+--- 
+--- Parameters:
+---  * path - string of the full path.
+---
+--- Returns:
+---  * string representing the folder path
+function helper.file.folderPath(path) return path:match('(.*/)') end
+
+
+--- Function
+--- Renames a given file.
+---
+--- Parameters:
+---  * path - string of the full file path.
+---  * newName - the new name for the file (not the full path).
+---
+--- Returns:
+---  * returns the new full file path.
+function helper.file.rename(path, newName)
+    local newPath = helper.file.folderPath(path) .. newName
+    hs.execute('mv ' .. path .. ' ' .. newPath)
+    return newPath
+end
 
 
 -- JSON -------------------------------------------------
@@ -50,11 +103,13 @@ helper.json = {}
 
 
 -- Convert the file name to a proper relative path
-function jsonFilename(fname) return workingDir .. fname .. '.json' end
+function helper.json.nameToPath(fname) return workingDir .. fname .. '.json' end
 
 
 function helper.json.load(fname)
-    local jsonFile = io.open(jsonFilename(fname), 'r')
+    local jsonFile = io.open(helper.json.nameToPath(fname), 'r')
+    -- No file found
+    if jsonFile == nil then return nil end
     local jsonData = jsonFile:read('*a')
     local jsonAsTable = json.decode(jsonData)
     jsonFile:close()
@@ -64,7 +119,7 @@ end
 
 function helper.json.dump(tab, fname)
     local jsonData = json.encode(tab)
-    local jsonFile = assert(io.open(jsonFilename(fname), 'w'))
+    local jsonFile = assert(io.open(helper.json.nameToPath(fname), 'w'))
     jsonFile:write(jsonData)
     jsonFile:close()
     -- Prettify the json
