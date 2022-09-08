@@ -13,6 +13,8 @@ function jxa.run(codeString)
     if status == false then
         alert('Failed JXA execution.')
         print('Failed JXA execution.')
+        print('Printing failed script...')
+        print(codeString)
     end
     return result
 end
