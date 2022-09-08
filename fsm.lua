@@ -5,6 +5,7 @@
 ---
 -- Module object
 fsm = {}
+jxa = require(workingDir .. 'jxa')
 fsm.finder = require(workingDir .. 'finderLink')
 imageHelper = require(workingDir .. 'imageHelper')
 
@@ -172,7 +173,11 @@ function fsm.open(name)
     local session = fsm.sessions[name]
     print('Loading session: ' .. session.name)
 
-    paths = helper.list.join(session.pinned, session.paths)
+    local paths = helper.list.join(session.pinned, session.paths)
+    -- for _, path in pairs(paths) do 
+    --     hs.alert.show(path)
+    -- end
+
     jxa.setFinderTabs(paths, session.focus)
     
 

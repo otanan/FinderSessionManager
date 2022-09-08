@@ -9,7 +9,6 @@ workingDir = 'Spoons/FinderSessionManager/'
 -- Imports
 json = require('lunajson')
 helper = require(workingDir .. 'helper')
-jxa = require(workingDir .. 'jxa')
 fsm = require(workingDir .. 'fsm')
 
 

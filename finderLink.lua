@@ -12,8 +12,8 @@ local finder = hs.appfinder.appFromName('Finder')
 
 -- Finder -------------------------------------------------
 function module.isOpen()
-    local main = finder:mainWindow()
-    if main == nil then return false end
+    local mainWindow = finder:mainWindow()
+    if mainWindow == nil then return false end
 
     return finder:mainWindow():title() ~= ''
 end
