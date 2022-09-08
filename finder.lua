@@ -85,6 +85,9 @@ function finder.getPaths()
         function getPaths() {
             let paths = [];
             let windows = finder.finderWindows();
+            // No windows open
+            if (windows.length == 0) return null;
+
             for (let window of windows) paths.push(pathFromWindow(window));
             return {
                 'paths': paths,
@@ -95,8 +98,13 @@ function finder.getPaths()
         // Run the script
         getPaths();
     ]]
-
-    return jxa.run(codeString)
+    data = jxa.run(codeString)
+    if data == nil then
+        print('No open finder window to get paths for.')
+        -- No open window
+        data = { paths={}, focus='' }
+    end
+    return data
 end
 
 

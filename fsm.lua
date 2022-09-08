@@ -14,17 +14,13 @@ fsm.finder = require(workingDir .. 'finder')
 
 
 -- Initialization -------------------------------------------------
--- Load the settings, should only need to be done once.
-function loadSettings()
+function fsm.init()
+    -- Settings init ----------
     print('Loading FSM settings...')
-    -- Settings defines projects and their pinned folders
-    fsm.settings = helper.json.load('settings')
-    -- New to make a new settings file
-    if fsm.settings == nil then fsm.settings = newSettings() end
-
+    fsm.settings = res.settings.load()
     fsm.sessions = fsm.settings.sessions
 
-    -- Set the current session
+    -- Set the active session
     local default = fsm.settings.default
     -- Must use __null__ since json is deleting null for some reason
     if default == '__null__' then
@@ -32,16 +28,11 @@ function loadSettings()
     else
         fsm.open(default)
     end
-end
 
-
--- New settings file
-function newSettings()
-    local settingsTemplate = '{ "default": "__null__", "sessions": {} }'
-    local file = io.open(helper.json.nameToPath('settings'), 'w')
-    file:write(settingsTemplate)
-    file:close()
-    return json.decode(settingsTemplate)
+    -- GUI init ----------C
+    fsm.newChooser()
+    -- Refresh the menu to reflect changes
+    fsm.softUpdate()
 end
 
 
@@ -178,6 +169,13 @@ function fsm.open(name)
     print('Loading session: ' .. session.name)
 
     local paths = helper.list.join(session.pinned, session.paths)
+    if helper.table.isEmpty(paths) then
+        -- The session had nothing open and nothing pinned, just default to
+        -- home directory.
+        print('Session has no associated paths... defaulting to Home.')
+        alert('Session has no paths... defaulting to Home.')
+        paths = {os.getenv('HOME')}
+    end
     fsm.finder.setPaths(paths, session.focus)
 
     fsm.active = session

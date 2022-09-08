@@ -43,19 +43,6 @@ function helper.list.join(tab1, tab2)
 end
 
 
--- Communications -------------------------------------------------
-helper.coms = {}
-
-
-local alertStyle = { textSize=30, radius=5 }
-function helper.coms.alert(message) hs.alert.show(message, alertStyle) end
-
-
-function helper.coms.notify(title, subtitle, message) 
-    hs.notify.show(title, subtitle, message)
-end
-
-
 -- File Operations -------------------------------------------------
 helper.file = {}
 

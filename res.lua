@@ -9,6 +9,30 @@ local res = {}
 local helper = require(workingDir .. 'helper')
 
 
+-- Settings -------------------------------------------------
+res.settings = {}
+
+-- Generate a new settings file from a template
+function res.settings.new()
+    print('Generating a settings file.')
+    local defaultSettingsPath = workingDir .. 'defaultSettings.json'
+    local newSettingsPath = workingDir .. 'settings.json'
+    helper.file.copy(defaultSettingsPath, newSettingsPath)
+    return res.settings.load()
+end
+
+
+-- Load the settings, should only need to be done once.
+function res.settings.load()
+    -- Settings defines projects and their pinned folders
+    local settings = helper.json.load('settings')
+    -- New to make a new settings file
+    if settings == nil then settings = res.settings.new() end
+    return settings
+end
+
+
+
 -- Images -------------------------------------------------
 res.images = {}
 

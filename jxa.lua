@@ -10,8 +10,10 @@ local jxa = {}
 -- Main functionality -------------------------------------------------
 function jxa.run(codeString)
     local status, result = hs.osascript.javascript(codeString)
-    if status == false then alert('Failed JXA execution.') end
-
+    if status == false then
+        alert('Failed JXA execution.')
+        print('Failed JXA execution.')
+    end
     return result
 end
 
