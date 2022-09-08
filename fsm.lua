@@ -4,10 +4,14 @@
 --- FinderSessionManager
 ---
 -- Module object
-fsm = {}
-jxa = require(workingDir .. 'jxa')
-fsm.finder = require(workingDir .. 'finderLink')
-imageHelper = require(workingDir .. 'imageHelper')
+local fsm = {}
+-- Imports ----------
+local helper = require(workingDir .. 'helper')
+-- Resource handling
+local res = require(workingDir .. 'res')
+-- Finder interactions
+fsm.finder = require(workingDir .. 'finder')
+
 
 -- Initialization -------------------------------------------------
 -- Load the settings, should only need to be done once.
@@ -174,12 +178,7 @@ function fsm.open(name)
     print('Loading session: ' .. session.name)
 
     local paths = helper.list.join(session.pinned, session.paths)
-    -- for _, path in pairs(paths) do 
-    --     hs.alert.show(path)
-    -- end
-
-    jxa.setFinderTabs(paths, session.focus)
-    
+    fsm.finder.setPaths(paths, session.focus)
 
     fsm.active = session
     fsm.softUpdate()
@@ -221,12 +220,15 @@ function fsm.update()
     end
 
     local paths, focus
-    local data = jxa.getFinderPaths()
+    local data = fsm.finder.getPaths()
     if data == nil then
         -- No finder windows opened
         paths = {}
         focus = ''
-    else paths, focus = table.unpack(data) end
+    else
+        paths = data.paths
+        focus = data.focus
+    end
 
     local activePaths = fsm.active.paths
     local activePinned = fsm.active.pinned
@@ -302,7 +304,7 @@ function fsm.newChooser()
 
         local image
         if session.image ~= nil then
-            image = imageHelper.loadImage(session.image)
+            image = res.images.load(session.image)
         end
 
         table.insert(choices, {
@@ -435,20 +437,20 @@ function fsm.menu.setSessionIcon()
     end
 
     local function getImageForIcon()
-        local path = imageHelper.chooseImageFromFileSystem()
+        local path = res.images.chooseFromFileSystem()
 
         -- Canceled icon choice.
         if path == nil then return end
 
         -- Delete any existing icons
         if fsm.active.image ~= nil then
-            local oldPath = imageHelper.getSavedImagePath(fsm.active.image)
+            local oldPath = res.images.getSavedPath(fsm.active.image)
             helper.file.delete(oldPath)
         end
 
         -- Save the image 
-        local imageName = imageHelper.saveImage(path)
-        local image = imageHelper.loadImage(imageName)
+        local imageName = res.images.save(path)
+        local image = res.images.load(imageName)
 
         fsm.active.image = imageName
         -- Save result to file
@@ -523,7 +525,7 @@ function fsm.menu.update()
 
     fsm.menu.bar:setTitle('FSM: ' .. state)
     -- if image ~= nil then
-    --     fsm.menu.bar:setIcon(imageHelper.loadImage(image):setSize({w=16,h=16}))
+    --     fsm.menu.bar:setIcon(res.images.load(image):setSize({w=16,h=16}))
     -- end
 end
 

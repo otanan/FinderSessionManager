@@ -3,13 +3,14 @@
 ---
 --- FSM initialization script.
 ---
--- Imports -------------------------------------------------
 -- Parent folder for relative imports in other scripts
 workingDir = 'Spoons/FinderSessionManager/'
--- Imports
-json = require('lunajson')
-helper = require(workingDir .. 'helper')
-fsm = require(workingDir .. 'fsm')
+-- Imports -------------------------------------------------
+local fsm = require(workingDir .. 'fsm')
+local helper = require(workingDir .. 'helper')
+
+-- Setup alert function for this module
+function alert(message) helper.coms.notify('FSM', '', message) end
 
 
 -- Watchers -------------------------------------------------

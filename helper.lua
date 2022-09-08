@@ -2,9 +2,11 @@
 --- Author: Jonathan Delgado
 ---
 --- Helper scripts that provides basic programmatic functionality.
+--- This module should be logically independent of FSM.
 ---
 -- Module object
-helper = {}
+local helper = {}
+local json = require('lunajson')
 
 
 -- Table operations -------------------------------------------------
@@ -26,10 +28,8 @@ end
 
 
 -- Check if table is empty
-function helper.table.isEmpty(tab)
-    for _, item in pairs(tab) do return false end
-    return true
-end
+local next = next -- optimization by localizing next function
+function helper.table.isEmpty(tab) return next(tab) == nil end
 
 
 -- Concatenate two arrays
@@ -43,6 +43,19 @@ function helper.list.join(tab1, tab2)
 end
 
 
+-- Communications -------------------------------------------------
+helper.coms = {}
+
+
+local alertStyle = { textSize=30, radius=5 }
+function helper.coms.alert(message) hs.alert.show(message, alertStyle) end
+
+
+function helper.coms.notify(title, subtitle, message) 
+    hs.notify.show(title, subtitle, message)
+end
+
+
 -- File Operations -------------------------------------------------
 helper.file = {}
 
@@ -51,6 +64,7 @@ function helper.file.delete(path)
     print('Deleting: ' .. path)
     hs.execute('rm ' .. path)
 end
+
 
 function helper.file.copy(oldPath, newPath)
     hs.execute('cp ' .. oldPath .. ' ' .. newPath)
