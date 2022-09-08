@@ -39,12 +39,15 @@ jxaStrings.base = [[
 -- Store commonly used function commands
 jxaStrings.fn = {}
 jxaStrings.fn.pathFromWindow = [[
-    // Get current finder path in given window
+    // Gives file://...
     function pathFromWindow(window) {
-        // Gives file://...
-        let fileURLString = window.target().url();
+        let target = window.target();
+        try { var url = target.url(); } catch {
+            // Cannot access .url(), such as in network drive
+            return null;
+        }
         // Convert to standard path
-        return $.NSURL.alloc.initWithString(fileURLString).fileSystemRepresentation
+        return $.NSURL.alloc.initWithString(url).fileSystemRepresentation
     }
 ]]
 jxaStrings.fn.openPathInTab = [[
@@ -88,7 +91,12 @@ function finder.getPaths()
             // No windows open
             if (windows.length == 0) return null;
 
-            for (let window of windows) paths.push(pathFromWindow(window));
+            for (let window of windows) {
+                let path = pathFromWindow(window)
+                // Failed path retrieval, move on
+                if (path == null) continue;
+                paths.push(path);
+            }
             return {
                 'paths': paths,
                 'focus': pathFromWindow(windows[0])

@@ -70,15 +70,31 @@ end
 
 
 -- Entry -------------------------------------------------
+local watchForActivate = hs.application.watcher.new(activationWatcher)
+local watchForDeactivate = hs.application.watcher.new(deactivationWatcher)
+
 function fsm.start()
     -- Initialize fsm, then start the watchers
     fsm.init()
 
-    -- Start watchers --------------------------
-    activeWatcher = hs.application.watcher.new(activationWatcher)
-    activeWatcher:start()
-    deactiveWatcher = hs.application.watcher.new(deactivationWatcher)
-    deactiveWatcher:start()
+    -- Start watchers
+    watchForActivate:start()
+    watchForDeactivate:start()
+end
+
+
+function fsm.quit()
+    -- Run last update 
+    print('Closing FSM...')
+    fsm.update()
+    fsm.running = false
+    -- Close menu
+    fsm.menu.bar:delete()
+    -- Close choose and kill call function (for rebindings)
+    fsm.chooser:delete()
+    -- Kill watchers
+    watchForActivate:stop()
+    watchForDeactivate:stop()
 end
 
 

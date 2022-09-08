@@ -18,6 +18,8 @@ function fsm.init()
     -- Settings init ----------
     print('Loading FSM settings...')
     fsm.settings = res.settings.load()
+    -- Running state, disable functionality when not running
+    fsm.running = true
     fsm.sessions = fsm.settings.sessions
 
     -- Set the active session
@@ -36,8 +38,11 @@ function fsm.init()
 end
 
 
--- Sessions -------------------------------------------------
---- Function
+-- Inspecting FSM -------------------------------------------------
+-- Inspect fsm properties such as the active session, checking
+-- whether the session is empty, etc.
+
+
 --- Reports whether the session has no associated paths.
 ---
 --- Parameters:
@@ -50,7 +55,7 @@ function fsm.isEmptySession(session)
         and helper.table.isEmpty(session.paths)
 end
 
---- Function
+
 --- Checks whether there no pins for the active session.
 ---
 --- Returns:
@@ -59,6 +64,18 @@ end
 function fsm.activeHasNoPins()
     return fsm.active == nil or helper.table.isEmpty(fsm.active.pinned)
 end
+
+
+-- Returns whether the active session is the default session
+function fsm.activeIsDefault()
+    if fsm.active == nil then return fsm.settings.default == '__null__' end
+
+    return fsm.active.name == fsm.settings.default
+end
+
+
+-- Edit Sessions -------------------------------------------------
+-- Changing session properties such as pinning paths, renaming it, etc.
 
 
 function fsm.addPinToActive(pin)
@@ -95,12 +112,46 @@ function fsm.removePinFromActive(pinToRemove)
 end
 
 
--- Returns whether the active session is the default session
-function fsm.activeIsDefault()
-    if fsm.active == nil then return fsm.settings.default == '__null__' end
+function fsm.renameActive(name)
+    if name == '' then
+        print('Rename session canceled.')
+        return
+    end
 
-    return fsm.active.name == fsm.settings.default
+    if name == fsm.active.name then
+        print('Name is identical. Nothing changed.')
+        return
+    end
+
+    -- Update settings ----------
+    -- Store information under new name
+    local oldName = fsm.active.name 
+    print('Renaming Session: ' .. oldName .. ' -> ' .. name)
+    alert('Renaming Session: ' .. oldName .. ' -> ' .. name)
+    fsm.active.name = name -- rename active
+    fsm.sessions[name] = fsm.active -- copy information
+    fsm.sessions[oldName] = nil -- delete old session
+
+    -- Update settings
+    fsm.update()
+    -- Remake chooser to reflect this new session option
+    fsm.newChooser()
 end
+
+
+-- Delete active session
+function fsm.deleteActive()
+    if fsm.active == nil then return end
+
+    fsm.sessions[fsm.active.name] = nil
+    fsm.detach()
+    -- Remake the chooser to reflect new options
+    fsm.newChooser()
+end
+
+
+-- FSM -------------------------------------------------
+-- Creating sessions, opening sessions, detaching sessions.
 
 
 function fsm.newSession()
@@ -168,7 +219,7 @@ function fsm.open(name)
     local session = fsm.sessions[name]
     print('Loading session: ' .. session.name)
 
-    local paths = helper.list.join(session.pinned, session.paths)
+    local paths = helper.table.join(session.pinned, session.paths)
     if helper.table.isEmpty(paths) then
         -- The session had nothing open and nothing pinned, just default to
         -- home directory.
@@ -185,26 +236,19 @@ function fsm.open(name)
 end
 
 
--- Delete active session
-function fsm.deleteActive()
-    if fsm.active == nil then return end
-
-    fsm.sessions[fsm.active.name] = nil
-    fsm.detach()
-    -- Remake the chooser to reflect new options
-    fsm.newChooser()
-end
+-- Show the FSM, which is currently just showing the chooser
+function fsm.show() if fsm.running then fsm.chooser:show() end end
 
 
 
 -- Discontinue tab tracking
 function fsm.detach()
+    if not fsm.running then return end
     fsm.update()
     fsm.active = nil
     alert('Session detached.')
     fsm.softUpdate()
 end
-
 
 
 -- Updating -------------------------------------------------
@@ -336,6 +380,30 @@ function fsm.menu.newSession()
 end
 
 
+function fsm.menu.changeSession()
+    local title = 'Change Session'
+    if helper.table.isEmpty(fsm.sessions) then
+        return {
+            title=title,
+            disabled=true
+        }
+    end
+
+    local sessionNames = {}
+    for _, session in pairs(fsm.sessions) do
+        table.insert(sessionNames, {
+            title=session.name,
+            fn=function(_, choice) fsm.open(choice.title) end
+        })
+    end
+
+    return {
+        title=title,
+        menu=sessionNames,
+    }
+end
+
+
 function fsm.menu.detachSession()
     local title = 'Detach Session'
     if fsm.active == nil then
@@ -428,6 +496,40 @@ function fsm.menu.removePins()
 end
 
 
+function fsm.menu.renameActive()
+    local title = 'Rename Session...'
+    if fsm.active == nil then return { title=title, disabled=true } end
+
+
+    -- Function for parsing the input
+    local function renameActivePrompt() 
+        local cancelButtonLabel = 'Cancel'
+        -- Name input ----------
+        local buttonLabel, name = hs.dialog.textPrompt(
+            'New session name',
+            'Please input a name for the new session.',
+            '', '', cancelButtonLabel
+        )
+
+        if buttonLabel == cancelButtonLabel then
+            print('Rename canceled.')
+            return
+        end
+
+        -- Name submitted
+        fsm.renameActive(name)
+    end 
+
+
+    return { title=title, fn=renameActivePrompt }
+end
+
+
+-- function fsm.menu.editSessionDescription()
+
+-- end
+
+
 function fsm.menu.setSessionIcon()
     local title = 'Set Session Icon'
     if fsm.active == nil then
@@ -486,6 +588,12 @@ function fsm.menu.setSessionDefault()
 end
 
 
+function fsm.menu.quit()
+    return { title='Quit', fn=fsm.quit }
+end
+
+
+-- Create the menu --------------------------
 local function setMenu(keys)
     if keys.alt then
         -- Just show the search when clicking with Alt modifier
@@ -497,15 +605,20 @@ local function setMenu(keys)
     -- Table setup ----------
     return {
         fsm.menu.newSession(),
+        fsm.menu.changeSession(),
         fsm.menu.detachSession(),
         fsm.menu.deleteActiveSession(),
         { title='-' }, -- separator
+        fsm.menu.renameActive(),
+        -- fsm.menu.editSessionDescription(),
+        fsm.menu.setSessionIcon(),
+        fsm.menu.setSessionDefault(),
+        { title='-' },
         fsm.menu.addPin(),
         fsm.menu.pinFocused(),
         fsm.menu.removePins(),
         { title='-' },
-        fsm.menu.setSessionIcon(),
-        fsm.menu.setSessionDefault(),
+        fsm.menu.quit(),
      }
 end
 fsm.menu.bar:setMenu(setMenu)
