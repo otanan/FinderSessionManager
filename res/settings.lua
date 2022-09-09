@@ -6,14 +6,14 @@
 -- Module object
 local settings = {}
 -- Imports ----------
-local helper = require(workingDir .. 'helper')
+local helper = require(fsmPackagePath .. 'helper')
 
 
 -- Generate a new settings file from a template
 function settings.new()
     print('Generating a settings file.')
-    local defaultSettingsPath = workingDir .. 'defaultSettings.json'
-    local newSettingsPath = workingDir .. 'settings.json'
+    local defaultSettingsPath = fsmPackagePath .. 'defaultSettings.json'
+    local newSettingsPath = fsmPackagePath .. 'settings.json'
     helper.file.copy(defaultSettingsPath, newSettingsPath)
     return settings.load()
 end
@@ -26,6 +26,15 @@ function settings.load()
     -- New to make a new settings file
     if settingsData == nil then settingsData = settings.new() end
     return settingsData
+end
+
+
+-- Update the settings file
+function settings.update(settingsData, readable)
+    readable = readable ~= nil
+    -- Update the actual file
+    helper.json.dump(settingsData, 'settings', readable)
+    print('Settings updated.')
 end
 
 

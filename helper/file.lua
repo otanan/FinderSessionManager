@@ -6,16 +6,18 @@
 -- Module object
 local file = {}
 -- Imports ----------
+local shell = require(fsmPackagePath .. 'scripts.shell')
+
 
 
 function file.delete(path)
     print('Deleting: ' .. path)
-    hs.execute('rm ' .. path)
+    shell.run('rm ' .. path)
 end
 
 
 function file.copy(oldPath, newPath)
-    hs.execute('cp ' .. oldPath .. ' ' .. newPath)
+    shell.run('cp ' .. oldPath .. ' ' .. newPath)
 end
 
 
@@ -55,7 +57,7 @@ function file.folderPath(path) return path:match('(.*/)') end
 ---  * returns the new full file path.
 function file.rename(path, newName)
     local newPath = file.folderPath(path) .. newName
-    hs.execute('mv ' .. path .. ' ' .. newPath)
+    shell.run('mv ' .. path .. ' ' .. newPath)
     return newPath
 end
 

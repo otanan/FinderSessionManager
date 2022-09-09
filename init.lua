@@ -4,12 +4,12 @@
 --- FSM initialization script.
 ---
 -- Parent folder for relative imports in other scripts
-workingDir = 'Spoons/FinderSessionManager/'
+fsmPackagePath = 'Spoons/FinderSessionManager/'
 -- Imports -------------------------------------------------
-local fsm = require(workingDir .. 'fsm')
-local helper = require(workingDir .. 'helper')
+local fsm = require(fsmPackagePath .. 'fsm')
+local helper = require(fsmPackagePath .. 'helper')
 -- App icon
-local res = require(workingDir .. 'res')
+local res = require(fsmPackagePath .. 'res')
 local appIcon = res.images.load('appIcon.png')
 
 
@@ -73,6 +73,7 @@ end
 local watchForActivate = hs.application.watcher.new(activationWatcher)
 local watchForDeactivate = hs.application.watcher.new(deactivationWatcher)
 
+-- Adds support for debugging mode
 function fsm.start()
     -- Initialize fsm, then start the watchers
     fsm.init()

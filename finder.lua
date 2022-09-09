@@ -5,9 +5,11 @@
 ---
 -- Module object
 local finder = {}
-
+-- Imports ----------
 -- Current implementation of most finder interactions makes use of JXA
-local jxa = require(workingDir .. 'jxa')
+local jxa = require(fsmPackagePath .. 'scripts.jxa')
+local scripts = require(fsmPackagePath .. 'scripts')
+
 -- Finder app local to this module
 local finderApp = hs.appfinder.appFromName('Finder')
 
@@ -116,13 +118,20 @@ function finder.getPaths()
 end
 
 
--- Helper function, converts list of path strings to a single js string
+-- Helper function, converts list of path strings to a single string
+-- Used for formatting code strings that will be parsed and will iterate 
+-- through a list of paths
 local function convertPathsListToPathString(paths)
+    local numPaths = #paths
+    if numPaths == 0 then return '' end
+
     local pathString = ''
-    for _, path in pairs(paths) do
+    for i, path in ipairs(paths) do
+        if i == numPaths then break end
         pathString = pathString .. '"' .. path .. '"' .. ', '
     end
-    return pathString
+    -- No trailing comma
+    return pathString .. '"' .. paths[numPaths] .. '"'
 end
 
 

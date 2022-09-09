@@ -6,8 +6,8 @@
 ---
 -- Module object
 local res = {}
-res.settings = require(workingDir .. 'res.settings')
-res.images = require(workingDir .. 'res.images')
+res.settings = require(fsmPackagePath .. 'res.settings')
+res.images = require(fsmPackagePath .. 'res.images')
 
 
 -- Exit -------------------------------------------------

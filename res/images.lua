@@ -6,7 +6,7 @@
 -- Module object
 local images = {}
 -- Imports ----------
-local helper = require(workingDir .. 'helper')
+local helper = require(fsmPackagePath .. 'helper')
 
 
 -- Opens a file explorer to get an image and returns the path to the image
@@ -22,7 +22,7 @@ end
 
 
 -- Returns the path to the saved image
-function images.getSavedPath(name) return workingDir .. 'icons/' .. name end
+function images.getSavedPath(name) return fsmPackagePath .. 'icons/' .. name end
 
 
 -- Copies the image to an images folder and returns the new path to the image

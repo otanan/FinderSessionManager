@@ -29,13 +29,21 @@ function table_.isEmpty(tab) return next(tab) == nil end
 
 
 -- Concatenate two arrays
-function table_.join(tab1, tab2)
-    joinedTable = {}
+function table_.concatArray(list1, list2)
+    joined = {}
 
-    for _, value in pairs(tab1) do table.insert(joinedTable, value) end
-    for _, value in pairs(tab2) do table.insert(joinedTable, value) end
+    for _, value in ipairs(list1) do table.insert(joined, value) end
+    for _, value in ipairs(list2) do table.insert(joined, value) end
 
-    return joinedTable
+    return joined
+end
+
+
+-- Copy arrays
+function table_.copy(list)
+    copy = {}
+    for _, value in ipairs(list) do table.insert(copy, value) end
+    return copy
 end
 
 

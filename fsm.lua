@@ -6,11 +6,11 @@
 -- Module object
 local fsm = {}
 -- Imports ----------
-local helper = require(workingDir .. 'helper')
+local helper = require(fsmPackagePath .. 'helper')
 -- Resource handling
-local res = require(workingDir .. 'res')
+local res = require(fsmPackagePath .. 'res')
 -- Finder interactions
-fsm.finder = require(workingDir .. 'finder')
+fsm.finder = require(fsmPackagePath .. 'finder')
 
 
 -- Initialization -------------------------------------------------
@@ -219,7 +219,7 @@ function fsm.open(name)
     local session = fsm.sessions[name]
     print('Loading session: ' .. session.name)
 
-    local paths = helper.table.join(session.pinned, session.paths)
+    local paths = helper.table.concatArray(session.pinned, session.paths)
     if helper.table.isEmpty(paths) then
         -- The session had nothing open and nothing pinned, just default to
         -- home directory.
@@ -252,6 +252,45 @@ end
 
 
 -- Updating -------------------------------------------------
+
+--- Helper function which sees which open paths are already pinned.
+-- Goes through the collection of open paths to inspect whether it
+-- is pinned and hence already accounted for versus which is a new tab
+-- to with the session. Updates settings directly.
+-- @param paths array: paths to compare with the active pins.
+-- @return array: the paths to store as proper sessions.
+local function compareOpenPathsWithPinned(paths)
+    local pathsToKeep = {}
+    -- Boolean dictionary which uses the pin as a key and a value of
+        -- whether the pin has been accounted for
+    local pinLegend = {}
+    for _, pin in ipairs(fsm.active.pinned) do
+        pinLegend[pin] = false
+    end
+
+    -- Update paths, skip activePinned paths
+    for _, path in ipairs(paths) do
+        local pinCase = pinLegend[path]
+        if pinCase == nil then
+            -- Path isn't pinned, keep it
+            table.insert(pathsToKeep, path)
+        else
+            if pinCase then
+                -- This path was accounted for as a pin, this is another
+                -- instance of the same tab, we need to keep it
+                table.insert(pathsToKeep, path)
+            else 
+                -- This is the first instance of this pinned path
+                -- mark it in case duplicates exist.
+                pinLegend[path] = true
+            end
+        end
+    end
+
+    return pathsToKeep
+end
+
+
 --- Function
 --- Updates all relevant information. Typically done on focus change or before
 --- changing sessions. Will save fsm state to file.
@@ -261,6 +300,7 @@ function fsm.update()
         return
     end
 
+    -- Get Finder paths and process data ----------
     local paths, focus
     local data = fsm.finder.getPaths()
     if data == nil then
@@ -271,28 +311,11 @@ function fsm.update()
         paths = data.paths
         focus = data.focus
     end
-
-    local activePaths = fsm.active.paths
-    local activePinned = fsm.active.pinned
+    -- Update the focus and paths
+    fsm.active.paths = compareOpenPathsWithPinned(data.paths)
     fsm.active.focus = focus
-
-    -- Clear old paths
-    helper.table.clear(activePaths)
-    -- Update paths, skip activePinned paths
-    for _, path in pairs(paths) do
-        if not helper.table.has(activePinned, path) then
-            table.insert(activePaths, path)
-        end
-    end
-
-    fsm.updateSettingsFile()
-end
-
-
-function fsm.updateSettingsFile()
-    -- Update the actual file
-    helper.json.dump(fsm.settings, 'settings')
-    print('Settings updated.')
+    -- Pass boolean of whether the settings should be pretty printed
+    res.settings.update(fsm.settings, fsm.debugging)
 end
 
 
@@ -575,7 +598,7 @@ function fsm.menu.setSessionDefault()
             fsm.settings.default = '__null__'
             -- Need to update settings here since settings aren't usually
                 -- updated when session is detached
-            fsm.updateSettingsFile()
+            res.settings.update(fsm.settings, fsm.debugging)
         else fsm.settings.default = fsm.active.name end
 
         -- Logging
