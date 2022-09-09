@@ -50,7 +50,9 @@ end
 
 local function finderDeactivated()
     fsm.update()
-    fsm.menu.hide()
+    if fsm.hideWithFocusLoss then 
+        fsm.menu.hide()
+    end
 end
 
 
@@ -85,8 +87,8 @@ end
 
 
 function fsm.quit()
-    -- Run last update 
     print('Closing FSM...')
+    -- Run last update 
     fsm.update()
     fsm.running = false
     -- Close menu

@@ -31,7 +31,7 @@ end
 
 -- Update the settings file
 function settings.update(settingsData, readable)
-    readable = readable ~= nil
+    if readable == nil then readable = false end
     -- Update the actual file
     helper.json.dump(settingsData, 'settings', readable)
     print('Settings updated.')

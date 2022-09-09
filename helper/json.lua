@@ -39,7 +39,7 @@ end
 
 -- Make json files readable
 function jsonModule.makeReadable(path)
-    python.runFile(fsmPackagePath .. 'json_pretty.py', path)
+    python.runFile(fsmPackagePath .. 'scripts/readable_json.py', path)
 end
 
 

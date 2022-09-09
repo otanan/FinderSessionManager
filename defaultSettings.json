@@ -1,1 +1,1 @@
-{ "default": "__null__", "sessions": {} }
+{ "default": "__null__", "sessions": {}, "hideWithFocusLoss": false }

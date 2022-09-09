@@ -41,9 +41,9 @@ jxaStrings.base = [[
 -- Store commonly used function commands
 jxaStrings.fn = {}
 jxaStrings.fn.pathFromWindow = [[
-    // Gives file://...
     function pathFromWindow(window) {
         let target = window.target();
+        // Gives file://...
         try { var url = target.url(); } catch {
             // Cannot access .url(), such as in network drive
             return null;

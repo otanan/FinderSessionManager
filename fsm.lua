@@ -19,8 +19,13 @@ function fsm.init()
     print('Loading FSM settings...')
     fsm.settings = res.settings.load()
     -- Running state, disable functionality when not running
-    fsm.running = true
     fsm.sessions = fsm.settings.sessions
+
+    -- Set default flag values ----------
+    fsm.running = true
+    if fsm.settings.hideWithFocusLoss == nil then
+        fsm.settings.hideWithFocusLoss = false
+    end
 
     -- Set the active session
     local default = fsm.settings.default
@@ -34,7 +39,7 @@ function fsm.init()
     -- GUI init ----------C
     fsm.newChooser()
     -- Refresh the menu to reflect changes
-    fsm.softUpdate()
+    fsm.softUpdate();
 end
 
 
