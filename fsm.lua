@@ -27,17 +27,18 @@ function fsm.init()
         fsm.settings.hideWithFocusLoss = false
     end
 
+    -- GUI init ----------
+    fsm.newChooser()
+    fsm.newMenu()
+
     -- Set the active session
     -- Must use boolean since json is deleting null for some reason
     if not fsm.settings.default then
         fsm.active = nil
     else
-        fsm.open(default)
+        fsm.open(fsm.settings.default)
     end
 
-    -- GUI init ----------
-    fsm.newChooser()
-    fsm.newMenu()
     -- Refresh the menu to reflect changes
     fsm.softUpdate()
 end
@@ -144,8 +145,9 @@ function fsm.pinFolder(path)
     end
 
     table.insert(fsm.active.pinnedFolders, path)
-    alert('Folder: ' .. path .. ' pinned.')
-    print('Folder: ' .. path .. ' pinned.')
+    local message = 'Folder ' .. path .. ' pinned.'
+    alert(message)
+    print(message)
 end
 
 
@@ -171,6 +173,8 @@ function fsm.renameActive(name)
 
     -- Update settings
     fsm.update()
+    -- Update GUI
+    fsm.softUpdate()
     -- Remake chooser to reflect this new session option
     fsm.newChooser()
 end
@@ -717,9 +721,17 @@ function fsm.menu.editActiveDescription()
     local function editActiveDescriptionPrompt() 
         local cancelButtonLabel = 'Cancel'
         -- Name input ----------
+        local subtitle
+
+        if fsm.active.description == '' then
+            subtitle = 'Please input a new description for the active session.'
+        else
+            subtitle = 'Current description: ' .. fsm.active.description
+        end
+
         local buttonLabel, name = hs.dialog.textPrompt(
             'New description',
-            'Please input a new description for the active session.',
+            subtitle,
             '', '', cancelButtonLabel
         )
 
@@ -826,9 +838,9 @@ local function setMenu(keys)
         fsm.menu.setSessionIcon(),
         fsm.menu.setSessionDefault(),
         { title='-' },
+        fsm.menu.pinFocused(),
         fsm.menu.addPin(),
         fsm.menu.addPinnedFolder(),
-        fsm.menu.pinFocused(),
         fsm.menu.removePins(),
         fsm.menu.removePinnedFolders(),
         { title='-' },
