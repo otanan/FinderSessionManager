@@ -7,6 +7,7 @@
 -- Module object
 local helper = {}
 helper.table = require(fsmPackagePath .. 'helper.table')
+helper.array = require(fsmPackagePath .. 'helper.array')
 helper.file = require(fsmPackagePath .. 'helper.file')
 helper.json = require(fsmPackagePath .. 'helper.json')
 

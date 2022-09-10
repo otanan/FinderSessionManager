@@ -7,7 +7,6 @@
 local fsm = {}
 -- Imports ----------
 local helper = require(fsmPackagePath .. 'helper')
-local strloop = helper.table.strloop
 -- Resource handling
 local res = require(fsmPackagePath .. 'res')
 -- Finder interactions
@@ -36,8 +35,9 @@ function fsm.init()
         fsm.open(default)
     end
 
-    -- GUI init ----------C
+    -- GUI init ----------
     fsm.newChooser()
+    fsm.newMenu()
     -- Refresh the menu to reflect changes
     fsm.softUpdate()
 end
@@ -144,6 +144,20 @@ function fsm.renameActive(name)
 end
 
 
+function fsm.editActiveDescription(desc)
+    if desc == '' then
+        print('Clearing description...')
+        return
+    end
+
+    -- Update settings ----------
+    fsm.active.description = desc
+
+    fsm.update()
+    -- Remake chooser to reflect this new session option
+    fsm.newChooser()
+end
+
 -- Delete active session
 function fsm.deleteActive()
     if fsm.active == nil then return end
@@ -199,6 +213,7 @@ function fsm.newSession()
         name=name,
         description=description,
         pinned={},
+        pinnedFolders={},
         paths={'/Users/Otanan'},
     }
     local session = fsm.sessions[name]
@@ -209,6 +224,65 @@ function fsm.newSession()
     fsm.open(name)
     -- Remake chooser to reflect this new session option
     fsm.newChooser()
+end
+
+
+--- Helper function to see which pinned paths aren't accounted for.
+-- Goes through the collection of paths to inspect whether it
+-- is pinned and hence already accounted for versus which is a new tab
+-- to with the session. Updates settings directly.
+-- @param paths array: paths to compare with pins.
+-- @return array: the paths to store as proper sessions.
+local function comparePathsWithPins(session)
+    -- Boolean dictionary which uses the pin as a key and a value of
+        -- whether the pin has been accounted for
+    local pinLegend = {}
+    for _, pin in ipairs(session.pinned) do
+        pinLegend[pin] = false
+    end
+
+    -- Same for pinned folders
+    local pinnedFolderLegend = {}
+    for _, folder in ipairs(session.pinnedFolders) do
+        pinnedFolderLegend[folder] = false
+    end
+
+    -- Go through each path
+    for _, path in ipairs(session.paths) do
+        local pinCase = pinLegend[path]
+        if pinCase == false then 
+            -- This path is pinned but we haven't accounted for it
+            pinLegend[path] = true
+        else
+            -- This path is either unpinned or a pin already accounted for,
+            -- in either case we need to see whether it's also a pinned folder
+            -- or just a new path we keep
+            for folder, folderChecked in pairs(pinnedFolderLegend) do
+                -- If this pinned folder was already accounted for then we're
+                -- done. We don't care if this tab could also be a subfolder
+                if not folderChecked then 
+                    if helper.file.isSubfolder(path, folder) then 
+                        -- This is a new subfolder, mark it as accounted for.
+                        pinnedFolderLegend[folder] = true
+                    end
+                end
+            end
+        end
+    end
+
+
+    -- Collect the pins we need to open
+    local pinsToOpen = {}
+    for pin, isOpen in pairs(pinLegend) do
+        -- Open it if it's not already opened.
+        if not isOpen then table.insert(pinsToOpen, pin) end
+    end
+    for pin, isOpen in pairs(pinnedFolderLegend) do
+        -- Open it if it's not already opened.
+        if not isOpen then table.insert(pinsToOpen, pin) end
+    end
+
+    return pinsToOpen
 end
 
 
@@ -224,18 +298,32 @@ function fsm.open(name)
     local session = fsm.sessions[name]
     print('Loading session: ' .. session.name)
 
-    -- Paths to open
-    local allPaths = helper.table.concatArray(session.pinned, session.paths)
 
-    if helper.table.isEmpty(allPaths) then
+    local paths, focus
+    if fsm.isEmptySession(session) then
         -- The session had nothing open and nothing pinned, just default to
         -- home directory.
         print('Session has no associated paths... defaulting to Home.')
         alert('Session has no paths... defaulting to Home.')
-        allPaths = { os.getenv('HOME') }
-    end
-    fsm.finder.setPaths(allPaths, session.focus)
+        
+        local home = os.getenv('HOME')
+        paths = { home }
+        focus = home
+    else
+        -- Not an empty session, inspect which paths should be opened
+        local pinsToOpen = comparePathsWithPins(session)
 
+        paths = helper.array.concat(pinsToOpen, session.paths)
+        focus = session.focus
+    end
+
+
+    if fsm.debugging then
+        print('Setting paths to...')
+        for _, path in ipairs(paths) do print(path) end
+    end
+
+    fsm.finder.setPaths(paths, focus)
     fsm.active = session
     fsm.softUpdate()
     -- Padding
@@ -260,53 +348,12 @@ end
 
 -- Updating -------------------------------------------------
 
---- Helper function which sees which open paths are already pinned.
--- Goes through the collection of open paths to inspect whether it
--- is pinned and hence already accounted for versus which is a new tab
--- to with the session. Updates settings directly.
--- @param paths array: paths to compare with the active pins.
--- @return array: the paths to store as proper sessions.
-local function compareOpenPathsWithPinned(paths)
-    local pathsToKeep = {}
-    -- Boolean dictionary which uses the pin as a key and a value of
-        -- whether the pin has been accounted for
-    local pinLegend = {}
 
-    for _, pin in ipairs(fsm.active.pinned) do
-        pinLegend[pin] = false
-
-    end
-
-    -- Update paths, skip activePinned paths
-    for i, path in ipairs(paths) do
-        print(path)
-        local pinCase = pinLegend[path]
-        if pinCase == nil then
-            -- Path isn't pinned, keep it
-            table.insert(pathsToKeep, path)
-        else
-            if pinCase then
-                -- This path was accounted for as a pin, this is another
-                -- instance of the same tab, we need to keep it
-                table.insert(pathsToKeep, path)
-            else 
-                -- This is the first instance of this pinned path
-                -- mark it in case duplicates exist.
-                pinLegend[path] = true
-            end
-        end
-    end
-
-    return pathsToKeep
-end
-
-
---- Function
---- Updates all relevant information. Typically done on focus change or before
---- changing sessions. Will save fsm state to file.
+--- Updates all relevant information both in memory and file.
+-- Updates information such as the path in focus and which are open,
+-- makes call to request settings file is updated. Typically called on focus
+-- deactivation or before changing sessions or quitting.
 function fsm.update()
-    -- TESTING
-    fsm.finder.getPaths()
     if fsm.active == nil then
         print('No active session.')
         return
@@ -324,7 +371,9 @@ function fsm.update()
         focus = data.focus
     end
     -- Update the focus and paths
-    fsm.active.paths = compareOpenPathsWithPinned(data.paths)
+    -- Just save all paths
+    -- We only have to consider which are pinned when opening.
+    fsm.active.paths = paths
     fsm.active.focus = focus
     -- Pass boolean of whether the settings should be pretty printed
     res.settings.update(fsm.settings, fsm.debugging)
@@ -407,7 +456,7 @@ end
 
 -- Menu -------------------------------------------------
 fsm.menu = {}
-fsm.menu.bar = hs.menubar.new()
+
 
 -- Menu table creation --------------------------
 function fsm.menu.newSession()
@@ -478,6 +527,11 @@ function fsm.menu.addPin()
             'Choose path to pin', '', true, true, false
         )
 
+        if paths == nil then
+            print('No path selected to pin.')
+            do return end
+        end
+
         -- Keys are strings for some reason
         path = paths['1']
 
@@ -497,7 +551,7 @@ function fsm.menu.pinFocused()
 
     -- Open a file explorer to choose a new pin
     local function getFocusedAndPin()
-        local focusedPath = jxa.getFocusedFinderPath()
+        local focusedPath = fsm.finder.getFocusedPath()
         fsm.addPinToActive(focusedPath)
     end
 
@@ -542,7 +596,7 @@ function fsm.menu.renameActive()
         -- Name input ----------
         local buttonLabel, name = hs.dialog.textPrompt(
             'New session name',
-            'Please input a name for the new session.',
+            'Please input a new name for the active session.',
             '', '', cancelButtonLabel
         )
 
@@ -560,9 +614,33 @@ function fsm.menu.renameActive()
 end
 
 
--- function fsm.menu.editSessionDescription()
+function fsm.menu.editActiveDescription()
+    local title = 'Edit Description...'
+    if fsm.active == nil then return { title=title, disabled=true } end
 
--- end
+
+    -- Function for parsing the input
+    local function editActiveDescriptionPrompt() 
+        local cancelButtonLabel = 'Cancel'
+        -- Name input ----------
+        local buttonLabel, name = hs.dialog.textPrompt(
+            'New description',
+            'Please input a new description for the active session.',
+            '', '', cancelButtonLabel
+        )
+
+        if buttonLabel == cancelButtonLabel then
+            print('Description edit canceled.')
+            return
+        end
+
+        -- Name submitted
+        fsm.editActiveDescription(name)
+    end 
+
+
+    return { title=title, fn=editActiveDescriptionPrompt }
+end
 
 
 function fsm.menu.setSessionIcon()
@@ -623,6 +701,11 @@ function fsm.menu.setSessionDefault()
 end
 
 
+function fsm.menu.restart()
+    return { title='Restart', fn=fsm.restart }
+end
+
+
 function fsm.menu.quit()
     return { title='Quit', fn=fsm.quit }
 end
@@ -645,7 +728,7 @@ local function setMenu(keys)
         fsm.menu.deleteActiveSession(),
         { title='-' }, -- separator
         fsm.menu.renameActive(),
-        -- fsm.menu.editSessionDescription(),
+        fsm.menu.editActiveDescription(),
         fsm.menu.setSessionIcon(),
         fsm.menu.setSessionDefault(),
         { title='-' },
@@ -653,10 +736,10 @@ local function setMenu(keys)
         fsm.menu.pinFocused(),
         fsm.menu.removePins(),
         { title='-' },
+        fsm.menu.restart(),
         fsm.menu.quit(),
      }
 end
-fsm.menu.bar:setMenu(setMenu)
 
 
 
@@ -684,6 +767,12 @@ end
 
 function fsm.menu.hide()
     fsm.menu.bar:removeFromMenuBar()
+end
+
+
+function fsm.newMenu()
+    fsm.menu.bar = hs.menubar.new()
+    fsm.menu.bar:setMenu(setMenu)
 end
 
 

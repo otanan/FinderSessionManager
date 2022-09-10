@@ -62,5 +62,16 @@ function file.rename(path, newName)
 end
 
 
+--- Checks whether a given path is a subfolder of another path.
+-- Takes a path to a folder and checks if it contains the substring of the
+-- parentFolder path.
+-- @param path string: the folder to check.
+-- @param path string: the potential parent folder.
+-- @return boolean: true if path points to subfolder of parentFolder.
+function file.isSubfolder(path, parentFolder)
+    return path:match(parentFolder) ~= nil
+end
+
+
 -- Exit -------------------------------------------------
 return file

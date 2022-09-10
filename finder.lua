@@ -7,7 +7,6 @@
 local finder = {}
 -- Imports ----------
 local helper = require(fsmPackagePath .. 'helper')
-local strloop = helper.table.strloop
 -- Current implementation of most finder interactions makes use of JXA
 local jxa = require(fsmPackagePath .. 'scripts.jxa')
 local scripts = require(fsmPackagePath .. 'scripts')
@@ -56,7 +55,7 @@ jxaStrings.fn.pathFromWindow = [[
 ]]
 jxaStrings.fn.openPathInTab = [[
     function openPathInTab(path) {
-        path = path.replace(' ', '\%%20'); // fix spaces
+        path = path.replaceAll(' ', '\%%20'); // fix spaces
         finder.openLocation('file://' + path);
     }
 ]]
@@ -141,7 +140,7 @@ local function convertPathsListToPathString(paths)
     if numPaths == 0 then return '' end
 
     local pathString = ''
-    for i, path in strloop(paths) do
+    for _, path in ipairs(paths) do
         if i == numPaths then break end
         pathString = pathString .. '"' .. path .. '"' .. ', '
     end
@@ -202,8 +201,6 @@ function finder.setPaths(paths, focus)
     ]]
     local pathString = convertPathsListToPathString(paths)
     codeString = string.format(codeString, pathString, focus)
-    print('Settings paths...')
-    print(codeString)
     jxa.run(codeString)
 end
 

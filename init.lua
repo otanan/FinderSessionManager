@@ -86,6 +86,20 @@ function fsm.start()
 end
 
 
+function fsm.restart()
+    notify('Restarting...')
+    -- Save active
+    local active = fsm.active
+
+    fsm.quit()
+    fsm.start()
+
+    -- Restore session
+    if active ~= nil then fsm.open(active.name) end
+    notify('Restart done!')
+end
+
+
 function fsm.quit()
     print('Closing FSM...')
     -- Run last update 
