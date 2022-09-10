@@ -7,6 +7,11 @@
 local array = {}
 -- Imports ----------
 
+-- Clear an array
+function array.clear(list)
+    for key in pairs(list) do table.remove(list, key) end
+end
+
 
 -- Concatenate two arrays
 function array.concat(list1, list2)
@@ -22,7 +27,7 @@ end
 -- Copy arrays
 function array.copy(list)
     copy = {}
-    for _, value in ipairs(list) do table.insert(copy, value) end
+    for i, value in ipairs(list) do copy[i] = value end
     return copy
 end
 

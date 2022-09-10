@@ -71,6 +71,11 @@ function fsm.activeHasNoPins()
 end
 
 
+function fsm.activeHasNoPinnedFolders()
+    return fsm.active == nil or helper.table.isEmpty(fsm.active.pinnedFolders)
+end
+
+
 -- Returns whether the active session is the default session
 function fsm.activeIsDefault()
     if fsm.active == nil then return fsm.settings.default == '__null__' end
@@ -105,15 +110,42 @@ end
 function fsm.removePinFromActive(pinToRemove)
     if fsm.activeHasNoPins() then return end
 
-    for key, pin in pairs(fsm.active.pinned) do
+    for key, pin in ipairs(fsm.active.pinned) do
         -- Remove the first instance of the pin
         if pin == pinToRemove then
-            fsm.active.pinned[key] = nil
+            table.remove(fsm.active.pinned, key)
             print('Pin ' .. pin .. ' removed.')
             alert('Pin ' .. pin .. ' removed.')
             return
         end
     end
+end
+
+
+function fsm.removePinnedFolderFromActive(pathToRemove)
+    if fsm.activeHasNoPinnedFolders() then return end
+
+    for key, path in ipairs(fsm.active.pinnedFolders) do
+        -- Remove the first instance of the pin
+        if path == pathToRemove then
+            table.remove(fsm.active.pinnedFolders, key)
+            print('Pin ' .. pathToRemove .. ' removed.')
+            alert('Pin ' .. pathToRemove .. ' removed.')
+            return
+        end
+    end
+end
+
+
+function fsm.pinFolder(path)
+    if fsm.active == nil then
+        print('No active to add pin folder to.')
+        return
+    end
+
+    table.insert(fsm.active.pinnedFolders, path)
+    alert('Folder: ' .. path .. ' pinned.')
+    print('Folder: ' .. path .. ' pinned.')
 end
 
 
@@ -233,7 +265,12 @@ end
 -- to with the session. Updates settings directly.
 -- @param paths array: paths to compare with pins.
 -- @return array: the paths to store as proper sessions.
-local function comparePathsWithPins(session)
+local function identifyPathsToOpen(session)
+    -- We'll always open the pinned and pinned folders.
+    local pathsToOpen = helper.array.copy(session.pinned)
+    local numPinned = #pathsToOpen
+    pathsToOpen = helper.array.concat(pathsToOpen, session.pinnedFolders)
+
     -- Boolean dictionary which uses the pin as a key and a value of
         -- whether the pin has been accounted for
     local pinLegend = {}
@@ -243,8 +280,10 @@ local function comparePathsWithPins(session)
 
     -- Same for pinned folders
     local pinnedFolderLegend = {}
-    for _, folder in ipairs(session.pinnedFolders) do
-        pinnedFolderLegend[folder] = false
+    for i, folder in ipairs(session.pinnedFolders) do
+        -- Table of whether it has been accounted for and index of the entry
+            -- in pathsToOpen to modify
+        pinnedFolderLegend[folder] = {done=false, index=i + numPinned}
     end
 
     -- Go through each path
@@ -257,32 +296,35 @@ local function comparePathsWithPins(session)
             -- This path is either unpinned or a pin already accounted for,
             -- in either case we need to see whether it's also a pinned folder
             -- or just a new path we keep
-            for folder, folderChecked in pairs(pinnedFolderLegend) do
+            local isPinnedFolder = false
+
+            for folder, state in pairs(pinnedFolderLegend) do
                 -- If this pinned folder was already accounted for then we're
                 -- done. We don't care if this tab could also be a subfolder
-                if not folderChecked then 
+                if not state.done then 
                     if helper.file.isSubfolder(path, folder) then 
                         -- This is a new subfolder, mark it as accounted for.
-                        pinnedFolderLegend[folder] = true
+                        isPinnedFolder = true
+                        state.done = true
+                        local i = state.index
+
+                        -- Update the path from root to this folder
+                        pathsToOpen[i] = path
+
+                        -- We're done with this path
+                        break
                     end
                 end
+            end
+
+            -- It's not a pinned folder, just append it
+            if not isPinnedFolder then
+                table.insert(pathsToOpen, path)
             end
         end
     end
 
-
-    -- Collect the pins we need to open
-    local pinsToOpen = {}
-    for pin, isOpen in pairs(pinLegend) do
-        -- Open it if it's not already opened.
-        if not isOpen then table.insert(pinsToOpen, pin) end
-    end
-    for pin, isOpen in pairs(pinnedFolderLegend) do
-        -- Open it if it's not already opened.
-        if not isOpen then table.insert(pinsToOpen, pin) end
-    end
-
-    return pinsToOpen
+    return pathsToOpen
 end
 
 
@@ -311,9 +353,7 @@ function fsm.open(name)
         focus = home
     else
         -- Not an empty session, inspect which paths should be opened
-        local pinsToOpen = comparePathsWithPins(session)
-
-        paths = helper.array.concat(pinsToOpen, session.paths)
+        paths = identifyPathsToOpen(session)
         focus = session.focus
     end
 
@@ -529,7 +569,7 @@ function fsm.menu.addPin()
 
         if paths == nil then
             print('No path selected to pin.')
-            do return end
+            return
         end
 
         -- Keys are strings for some reason
@@ -538,10 +578,38 @@ function fsm.menu.addPin()
         -- Allow multiple selection is false, there will only be one path
         fsm.addPinToActive(path)
         -- Open path
-        jxa.openPath(path)
+        fsm.finder.openPath(path)
     end
 
     return { title=title, fn=browserForPin }
+end
+
+
+function fsm.menu.addPinnedFolder()
+    local title = 'Pin Folder...'
+    if fsm.active == nil then return { title=title, disabled=true } end
+
+    -- Open a file explorer to choose a new pin
+    local function browserForFolder()
+        local paths = hs.dialog.chooseFileOrFolder(
+            'Choose folder to pin', '', true, true, false
+        )
+
+        if paths == nil then
+            print('No path selected to pin.')
+            return
+        end
+
+        -- Keys are strings for some reason
+        path = paths['1']
+
+        -- Allow multiple selection is false, there will only be one path
+        fsm.pinFolder(path)
+        -- Open path
+        fsm.finder.openPath(path)
+    end
+
+    return { title=title, fn=browserForFolder }
 end
 
 
@@ -561,7 +629,6 @@ end
 
 function fsm.menu.removePins()
     local title = 'Remove Pins'
-    local removePinsTable
     if fsm.activeHasNoPins() then
         return {
             title=title,
@@ -574,13 +641,40 @@ function fsm.menu.removePins()
     for _, pin in pairs(fsm.active.pinned) do
         table.insert(pinsTable, {
             title=pin,
-            fn=function(_, pin) fsm.removePinFromActive(pin.title) end
+            fn=function(_, choice) fsm.removePinFromActive(choice.title) end
         })
     end
 
     return {
         title=title,
         menu=pinsTable,
+    }
+end
+
+
+function fsm.menu.removePinnedFolders()
+    local title = 'Remove Pinned Folders'
+    if fsm.activeHasNoPinnedFolders() then
+        return {
+            title=title,
+            disabled=true
+        }   
+    end 
+
+    -- Valid active session with pins
+    local pinnedFolders = {}
+    for _, path in pairs(fsm.active.pinnedFolders) do
+        table.insert(pinnedFolders, {
+            title=path,
+            fn=function(_, choice)
+                fsm.removePinnedFolderFromActive(choice.title)
+            end
+        })
+    end
+
+    return {
+        title=title,
+        menu=pinnedFolders,
     }
 end
 
@@ -733,8 +827,10 @@ local function setMenu(keys)
         fsm.menu.setSessionDefault(),
         { title='-' },
         fsm.menu.addPin(),
+        fsm.menu.addPinnedFolder(),
         fsm.menu.pinFocused(),
         fsm.menu.removePins(),
+        fsm.menu.removePinnedFolders(),
         { title='-' },
         fsm.menu.restart(),
         fsm.menu.quit(),
