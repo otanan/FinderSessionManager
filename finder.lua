@@ -6,6 +6,8 @@
 -- Module object
 local finder = {}
 -- Imports ----------
+local helper = require(fsmPackagePath .. 'helper')
+local strloop = helper.table.strloop
 -- Current implementation of most finder interactions makes use of JXA
 local jxa = require(fsmPackagePath .. 'scripts.jxa')
 local scripts = require(fsmPackagePath .. 'scripts')
@@ -58,11 +60,22 @@ jxaStrings.fn.openPathInTab = [[
         finder.openLocation('file://' + path);
     }
 ]]
+-- AppleScript --------------------------
+local appleStrings = {}
+-- Store commonly used function commands
+appleStrings.fn = {}
+-- Make the new tab
+-- Changes target of new tab since new window defaults to a target that
+-- is currently unreadable for jxa, so we avoid issues with this
+appleStrings.fn.newTab = [[
+    tell application "Finder" to make new Finder window to home
+]]
+
 
 
 -- Implementations --------------------------
 function finder.openPath(path)
-    local codeString = jxaBase .. jxaStrings.fn.openPathInTab .. [[
+    local codeString = jxaStrings.base .. jxaStrings.fn.openPathInTab .. [[
         openPathInTab("%s");
     ]]
     -- Run the formatted string
@@ -73,7 +86,8 @@ end
 function finder.getFocusedPath()
     local codeString = jxaStrings.base .. jxaStrings.fn.pathFromWindow .. [[
         let windows = finder.finderWindows();
-        pathFromWindow(windows[0]);
+        // No open window to get focus for
+        if (windows.length > 0) pathFromWindow(windows[0]);
     ]]
 
     return jxa.run(codeString)
@@ -81,9 +95,10 @@ end
 
 
 --- Gets the cwd of each finder window.
---
--- @return dictionary: a dictionary containing the paths list and the path of 
--- the focused window as strings.
+-- Gets a focused window and manipulates tabs in order to get their order.
+-- @return dict: key of focus gives the focused path as a string, and key of 
+-- paths gives a list of path strings for each window in order of tab 
+-- appearance.
 function finder.getPaths()
     local codeString = jxaStrings.base .. jxaStrings.fn.pathFromWindow .. [[
         // Get all finder paths through all windows
@@ -126,7 +141,7 @@ local function convertPathsListToPathString(paths)
     if numPaths == 0 then return '' end
 
     local pathString = ''
-    for i, path in ipairs(paths) do
+    for i, path in strloop(paths) do
         if i == numPaths then break end
         pathString = pathString .. '"' .. path .. '"' .. ', '
     end
@@ -140,7 +155,7 @@ end
 -- @param paths list: list of strings containing the paths to move to.
 -- @param focus string: the path to focus the tab on.
 function finder.setPaths(paths, focus)
-    local command = jxaStrings.base .. [[
+    local codeString = jxaStrings.base .. [[
         let paths = [%s];
         let focus = "%s".trim();
 
@@ -186,7 +201,10 @@ function finder.setPaths(paths, focus)
         if (focus.length !== 0) openPathInTab(focus);
     ]]
     local pathString = convertPathsListToPathString(paths)
-    jxa.run(string.format(command, pathString, focus))
+    codeString = string.format(codeString, pathString, focus)
+    print('Settings paths...')
+    print(codeString)
+    jxa.run(codeString)
 end
 
 

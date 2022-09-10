@@ -7,6 +7,7 @@
 local fsm = {}
 -- Imports ----------
 local helper = require(fsmPackagePath .. 'helper')
+local strloop = helper.table.strloop
 -- Resource handling
 local res = require(fsmPackagePath .. 'res')
 -- Finder interactions
@@ -28,9 +29,8 @@ function fsm.init()
     end
 
     -- Set the active session
-    local default = fsm.settings.default
-    -- Must use __null__ since json is deleting null for some reason
-    if default == '__null__' then
+    -- Must use boolean since json is deleting null for some reason
+    if not fsm.settings.default then
         fsm.active = nil
     else
         fsm.open(default)
@@ -39,7 +39,7 @@ function fsm.init()
     -- GUI init ----------C
     fsm.newChooser()
     -- Refresh the menu to reflect changes
-    fsm.softUpdate();
+    fsm.softUpdate()
 end
 
 
@@ -224,15 +224,17 @@ function fsm.open(name)
     local session = fsm.sessions[name]
     print('Loading session: ' .. session.name)
 
-    local paths = helper.table.concatArray(session.pinned, session.paths)
-    if helper.table.isEmpty(paths) then
+    -- Paths to open
+    local allPaths = helper.table.concatArray(session.pinned, session.paths)
+
+    if helper.table.isEmpty(allPaths) then
         -- The session had nothing open and nothing pinned, just default to
         -- home directory.
         print('Session has no associated paths... defaulting to Home.')
         alert('Session has no paths... defaulting to Home.')
-        paths = {os.getenv('HOME')}
+        allPaths = { os.getenv('HOME') }
     end
-    fsm.finder.setPaths(paths, session.focus)
+    fsm.finder.setPaths(allPaths, session.focus)
 
     fsm.active = session
     fsm.softUpdate()
@@ -269,12 +271,15 @@ local function compareOpenPathsWithPinned(paths)
     -- Boolean dictionary which uses the pin as a key and a value of
         -- whether the pin has been accounted for
     local pinLegend = {}
+
     for _, pin in ipairs(fsm.active.pinned) do
         pinLegend[pin] = false
+
     end
 
     -- Update paths, skip activePinned paths
-    for _, path in ipairs(paths) do
+    for i, path in ipairs(paths) do
+        print(path)
         local pinCase = pinLegend[path]
         if pinCase == nil then
             -- Path isn't pinned, keep it
@@ -300,6 +305,8 @@ end
 --- Updates all relevant information. Typically done on focus change or before
 --- changing sessions. Will save fsm state to file.
 function fsm.update()
+    -- TESTING
+    fsm.finder.getPaths()
     if fsm.active == nil then
         print('No active session.')
         return

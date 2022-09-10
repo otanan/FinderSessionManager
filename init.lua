@@ -34,7 +34,7 @@ end
 
 
 -- Send an alert.
--- Currently just another alias for notify
+-- Currently just an alias for notify
 local function alert(message)
     -- local alertStyle = { textSize=30, radius=5 }
     notify(message)
