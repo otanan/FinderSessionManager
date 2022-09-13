@@ -18,8 +18,8 @@
 </div>
 
 
-<!-- Project Screenshot -->
-![Screenshot](images/fsm_demo.mov "Screenshot")
+<!-- Project Demo -->
+https://user-images.githubusercontent.com/6320907/189829171-1e91c3e2-0feb-4e7a-aa12-0a4d899f059b.mp4
 
 Inspired by [Workona's](https://workona.com/) tab management system and [Sublime Text's](https://www.sublimetext.com/) own [project manager](https://packagecontrol.io/packages/ProjectManager).
 
