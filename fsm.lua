@@ -292,6 +292,8 @@ local function identifyPathsToOpen(session)
 
     -- Go through each path
     for _, path in ipairs(session.paths) do
+        -- print('Inspecting path: ' .. path)
+
         local pinCase = pinLegend[path]
         if pinCase == false then 
             -- This path is pinned but we haven't accounted for it
@@ -302,27 +304,33 @@ local function identifyPathsToOpen(session)
             -- or just a new path we keep
             local isPinnedFolder = false
 
+            -- Keeps track of the scoring of the subfolders
+            local lowestScore = -1
+            local stateOfBest
             for folder, state in pairs(pinnedFolderLegend) do
                 -- If this pinned folder was already accounted for then we're
                 -- done. We don't care if this tab could also be a subfolder
-                if not state.done then 
-                    if helper.file.isSubfolder(path, folder) then 
-                        -- This is a new subfolder, mark it as accounted for.
-                        isPinnedFolder = true
-                        state.done = true
-                        local i = state.index
-
-                        -- Update the path from root to this folder
-                        pathsToOpen[i] = path
-
-                        -- We're done with this path
-                        break
+                if not state.done then
+                    local score = helper.file.scoreSubfolder(path, folder)
+                    -- This is the best score
+                    if lowestScore < 0 and score >= 0 then
+                        lowestScore = score
+                        stateOfBest = state
+                    elseif score >= 0 and score <= lowestScore then 
+                        lowestScore = score
+                        stateOfBest = state
                     end
+
                 end
             end
 
+            -- Finished inspecting all
+            if lowestScore >= 0 then
+                -- This was a subfolder of something unaccounted for
+                stateOfBest.done = true
+                pathsToOpen[stateOfBest.index] =  path
+            else
             -- It's not a pinned folder, just append it
-            if not isPinnedFolder then
                 table.insert(pathsToOpen, path)
             end
         end
@@ -790,16 +798,19 @@ function fsm.menu.setSessionDefault()
     if fsm.activeIsDefault() then return { title=title, disabled=true } end
 
     local function setActiveSessionAsDefault()
+        local oldDefaultName = fsm.settings.default or 'Detached'
+
         if fsm.active == nil then
-            fsm.settings.default = '__null__'
+            fsm.settings.default = false
             -- Need to update settings here since settings aren't usually
                 -- updated when session is detached
             res.settings.update(fsm.settings, fsm.debugging)
         else fsm.settings.default = fsm.active.name end
 
         -- Logging
-        alert('Default updated.')
-        print('Changing default to: ' .. default)
+        local message = 'Default updated: ' .. oldDefaultName .. ' -> ' .. (fsm.settings.default or 'Detached')
+        alert(message)
+        print(message)
     end
 
     

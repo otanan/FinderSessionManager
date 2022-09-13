@@ -73,5 +73,33 @@ function file.isSubfolder(path, parentFolder)
 end
 
 
+--- Scores a path as being a subfolder to a given parent folder.
+-- Assesses whether the folder pointed to by path is a descendant of the parent 
+-- folder, and provides a score depending on how deep the child folder is.
+-- @param path string: the potential child folder.
+-- @param parentFolder string: the potential parent folder.
+-- @return int: the score. Returns -1 if the path is not a subdirectory of the 
+-- parentFolder, 0 if the path is exactly the parent folder, or a positive 
+-- integer which represents the number of descendant folders of parentFolder 
+-- are parent folders to path.
+function file.scoreSubfolder(path, parentFolder)
+    -- Remove the first instance of the subpath
+    local subpath, count = string.gsub(path, parentFolder, '', 1)
+    -- This is not a subpath of the parent folder
+    if count == 0 then return -1 end
+    -- Tests for case where path is similar to parentFolder but differ.
+    -- i.e. parentFolder    = /Users/user/vi
+    --      path            = /Users/user/vim
+    -- path is not a child of parentFolder but will give a nonzero count
+        -- for removal, so we test the first character.
+    local firstChar = subpath:sub(1, 1)
+    if firstChar ~= '/' and firstChar ~= '' then return -1 end
+
+    -- Count the number of directories deep, this will be its score
+    _, count = string.gsub(subpath, '/', '')
+    return count
+end
+
+
 -- Exit -------------------------------------------------
 return file
