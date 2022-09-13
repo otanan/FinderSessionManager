@@ -19,7 +19,7 @@
 
 
 <!-- Project Screenshot -->
-![Screenshot](images/screenshot.png "Screenshot")
+![Screenshot](images/fsm_demo.mov "Screenshot")
 
 Inspired by [Workona's](https://workona.com/) tab management system and [Sublime Text's](https://www.sublimetext.com/) own [project manager](https://packagecontrol.io/packages/ProjectManager).
 
